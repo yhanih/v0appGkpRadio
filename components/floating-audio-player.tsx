@@ -3,17 +3,40 @@
 import { useState } from "react";
 import { Play, Pause, X, ChevronUp, ChevronDown } from "lucide-react";
 import Image from "next/image";
+import { useAudioPlayer } from "@/lib/audio-player-context";
 
 export function FloatingAudioPlayer() {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
+  const { isPlaying, setIsPlaying, isExpanded, setIsExpanded, isVisible, setIsVisible, isMinimized, setIsMinimized } = useAudioPlayer();
   const [progress, setProgress] = useState(35);
 
   if (!isVisible) return null;
 
+  if (isMinimized) {
+    return (
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <button
+          onClick={() => setIsMinimized(false)}
+          className="w-12 h-12 rounded-full bg-[#203E3F] text-white flex items-center justify-center shadow-lg hover:bg-[#2A4A4B] transition-all hover:scale-105 animate-in fade-in zoom-in duration-300"
+          aria-label="Maximize player"
+        >
+          <div className="relative">
+            <div className="w-6 h-6 rounded-full border-2 border-white/30 flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-white" />
+            </div>
+            {isPlaying && (
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2DA072] opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-[#2DA072]" />
+              </span>
+            )}
+          </div>
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:bottom-6 z-50 sm:w-[360px]">
+    <div className="fixed bottom-4 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:bottom-6 z-50 w-auto sm:w-[360px]">
       <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100">
         {/* Main Player Bar */}
         <div className="p-3 flex items-center gap-3">
@@ -84,9 +107,9 @@ export function FloatingAudioPlayer() {
             </button>
             <button
               type="button"
-              onClick={() => setIsVisible(false)}
+              onClick={() => setIsMinimized(true)}
               className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-              aria-label="Close player"
+              aria-label="Minimize player"
             >
               <X className="w-4 h-4" />
             </button>

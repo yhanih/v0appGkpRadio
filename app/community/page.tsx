@@ -29,8 +29,8 @@ export default function CommunityPage() {
                                     Start a Discussion
                                 </a>
                             </Button>
-                            <Button asChild variant="outline" className="border-white/20 text-white hover:bg-white/10 px-6 py-5 rounded-xl hover:text-white">
-                                <a href="#feed font-bold">Browse categories</a>
+                            <Button asChild className="bg-white/10 text-white hover:bg-white/20 border-white/20 backdrop-blur-sm px-6 py-5 rounded-xl transition-all">
+                                <a href="#feed" className="font-bold">Browse categories</a>
                             </Button>
                         </div>
                     </div>

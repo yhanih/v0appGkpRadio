@@ -3,6 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { Play, Pause, Users, ChevronLeft, ChevronRight, Calendar, MessageSquare, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useAudioPlayer } from "@/lib/audio-player-context";
+import Link from "next/link";
 
 const scheduleData = [
   {
@@ -48,7 +50,7 @@ const scheduleData = [
 ];
 
 export function HeroSection() {
-  const [isPlaying, setIsPlaying] = useState(false);
+  const { isPlaying, togglePlay } = useAudioPlayer();
   const [currentScheduleIndex, setCurrentScheduleIndex] = useState(0);
 
   useEffect(() => {
@@ -124,7 +126,7 @@ export function HeroSection() {
               <div className="flex flex-col sm:flex-row gap-4 pt-2">
                 <Button
                   size="lg"
-                  onClick={() => setIsPlaying(!isPlaying)}
+                  onClick={togglePlay}
                   className={`gap-3 px-8 py-6 text-lg font-bold rounded-2xl transition-all duration-300 ${isPlaying
                     ? "bg-red-500 hover:bg-red-600 text-white shadow-[0_4px_20px_rgba(239,68,68,0.4)] animate-[pulse-play_2s_ease-in-out_infinite]"
                     : "bg-[#c39d48] hover:bg-[#fbbf24] text-[#092c25] shadow-[0_4px_20px_rgba(195,157,72,0.3)] hover:shadow-[0_8px_30px_rgba(195,157,72,0.4)] hover:-translate-y-1"
@@ -139,10 +141,13 @@ export function HeroSection() {
                 <Button
                   size="lg"
                   variant="outline"
+                  asChild
                   className="gap-3 px-8 py-6 text-lg font-semibold rounded-2xl bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/20 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5"
                 >
-                  <Users className="w-5 h-5" />
-                  <span>Join Community</span>
+                  <Link href="/community">
+                    <Users className="w-5 h-5" />
+                    <span>Join Community</span>
+                  </Link>
                 </Button>
               </div>
             </div>

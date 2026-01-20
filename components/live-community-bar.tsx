@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Heart, MessageCircle, Users } from "lucide-react";
 
 const liveComments = [
@@ -64,20 +65,14 @@ export function LiveCommunityBar() {
 
           {/* Quick Actions */}
           <div className="flex items-center gap-2">
-            <button
-              className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-600 border border-gray-200 rounded-md px-2.5 py-1 transition-colors text-xs font-medium"
-              aria-label="Send prayer"
-            >
+            <Link href="/community?category=Prayers" className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-600 border border-gray-200 rounded-md px-2.5 py-1 transition-colors text-xs font-medium">
               <Heart className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Pray</span>
-            </button>
-            <button
-              className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-600 border border-gray-200 rounded-md px-2.5 py-1 transition-colors text-xs font-medium"
-              aria-label="Comment"
-            >
+            </Link>
+            <Link href="/community" className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-600 border border-gray-200 rounded-md px-2.5 py-1 transition-colors text-xs font-medium">
               <MessageCircle className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Share</span>
-            </button>
+            </Link>
           </div>
         </div>
       </div>

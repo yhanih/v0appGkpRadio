@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { FloatingAudioPlayer } from "@/components/floating-audio-player";
+import { AudioPlayerProvider } from "@/lib/audio-player-context";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -51,10 +52,12 @@ export default function RootLayout({
       <body
         className={`${playfair.variable} ${inter.variable} font-sans antialiased`}
       >
-        <Header />
-        {children}
-        <FloatingAudioPlayer />
-        <Footer />
+        <AudioPlayerProvider>
+          <Header />
+          {children}
+          <FloatingAudioPlayer />
+          <Footer />
+        </AudioPlayerProvider>
         <Analytics />
       </body>
     </html>

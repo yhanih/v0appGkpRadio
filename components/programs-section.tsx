@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Clock, ChevronRight } from "lucide-react";
@@ -141,13 +142,13 @@ export function ProgramsSection() {
                 <p className="text-muted-foreground text-sm mb-4">
                   {program.description}
                 </p>
-                <button
-                  type="button"
+                <Link
+                  href="/programs"
                   className="inline-flex items-center text-sm font-medium text-secondary hover:text-secondary/80 transition-colors group-hover:gap-2 gap-1"
                 >
                   Learn More
                   <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                </button>
+                </Link>
               </div>
             </div>
           ))}
@@ -156,10 +157,11 @@ export function ProgramsSection() {
         {/* CTA */}
         <div className="text-center mt-12">
           <Button
+            asChild
             variant="outline"
             className="border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-transparent"
           >
-            View Full Schedule
+            <Link href="/programs">View Full Schedule</Link>
           </Button>
         </div>
       </div>

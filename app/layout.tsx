@@ -2,6 +2,9 @@ import React from "react"
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
+import { FloatingAudioPlayer } from "@/components/floating-audio-player";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -48,7 +51,10 @@ export default function RootLayout({
       <body
         className={`${playfair.variable} ${inter.variable} font-sans antialiased`}
       >
+        <Header />
         {children}
+        <FloatingAudioPlayer />
+        <Footer />
         <Analytics />
       </body>
     </html>

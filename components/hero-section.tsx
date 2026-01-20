@@ -125,11 +125,10 @@ export function HeroSection() {
                 <Button
                   size="lg"
                   onClick={() => setIsPlaying(!isPlaying)}
-                  className={`gap-3 px-8 py-6 text-lg font-bold rounded-2xl transition-all duration-300 ${
-                    isPlaying
-                      ? "bg-red-500 hover:bg-red-600 text-white shadow-[0_4px_20px_rgba(239,68,68,0.4)] animate-[pulse-play_2s_ease-in-out_infinite]"
-                      : "bg-[#c39d48] hover:bg-[#fbbf24] text-[#092c25] shadow-[0_4px_20px_rgba(195,157,72,0.3)] hover:shadow-[0_8px_30px_rgba(195,157,72,0.4)] hover:-translate-y-1"
-                  }`}
+                  className={`gap-3 px-8 py-6 text-lg font-bold rounded-2xl transition-all duration-300 ${isPlaying
+                    ? "bg-red-500 hover:bg-red-600 text-white shadow-[0_4px_20px_rgba(239,68,68,0.4)] animate-[pulse-play_2s_ease-in-out_infinite]"
+                    : "bg-[#c39d48] hover:bg-[#fbbf24] text-[#092c25] shadow-[0_4px_20px_rgba(195,157,72,0.3)] hover:shadow-[0_8px_30px_rgba(195,157,72,0.4)] hover:-translate-y-1"
+                    }`}
                 >
                   <span className="flex items-center justify-center w-8 h-8">
                     {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
@@ -236,11 +235,10 @@ export function HeroSection() {
                         <button
                           key={i}
                           onClick={() => setCurrentScheduleIndex(i)}
-                          className={`h-2 rounded-full transition-all duration-300 ${
-                            i === currentScheduleIndex
-                              ? "w-8 bg-[#0d4a3e]"
-                              : "w-2 bg-[#0d4a3e]/30 hover:bg-[#0d4a3e]/50"
-                          }`}
+                          className={`h-2 rounded-full transition-all duration-300 ${i === currentScheduleIndex
+                            ? "w-8 bg-[#0d4a3e]"
+                            : "w-2 bg-[#0d4a3e]/30 hover:bg-[#0d4a3e]/50"
+                            }`}
                         />
                       ))}
                     </div>

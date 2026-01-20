@@ -157,9 +157,13 @@ export function CommunityFeed() {
     const [activeCategory, setActiveCategory] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
     const [showNewPostModal, setShowNewPostModal] = useState(false);
+
+    // Hybrid auto-load state
     const [visibleCount, setVisibleCount] = useState(3);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const loadMoreRef = useRef<HTMLDivElement>(null);
+
+    const MAX_VISIBLE = 9; // Cap at 9 discussions to keep footer accessible
 
     useEffect(() => {
         const category = searchParams.get("category");
@@ -179,17 +183,22 @@ export function CommunityFeed() {
     }, [activeCategory, searchQuery]);
 
     const displayThreads = useMemo(() => {
-        return filteredThreads.slice(0, visibleCount);
+        // Cap at MAX_VISIBLE discussions
+        return filteredThreads.slice(0, Math.min(visibleCount, MAX_VISIBLE));
     }, [filteredThreads, visibleCount]);
+
+    const hasMore = visibleCount < filteredThreads.length && visibleCount < MAX_VISIBLE;
+    const reachedCap = visibleCount >= MAX_VISIBLE && filteredThreads.length > MAX_VISIBLE;
 
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
-                if (entries[0].isIntersecting && !isLoadingMore && visibleCount < filteredThreads.length) {
+                if (entries[0].isIntersecting && !isLoadingMore && hasMore) {
                     setIsLoadingMore(true);
+
                     // Simulate network delay
                     setTimeout(() => {
-                        setVisibleCount(prev => prev + 3);
+                        setVisibleCount(prev => Math.min(prev + 3, MAX_VISIBLE));
                         setIsLoadingMore(false);
                     }, 800);
                 }
@@ -202,7 +211,7 @@ export function CommunityFeed() {
         }
 
         return () => observer.disconnect();
-    }, [isLoadingMore, visibleCount, filteredThreads.length]);
+    }, [isLoadingMore, hasMore]);
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-20">
@@ -251,80 +260,92 @@ export function CommunityFeed() {
 
             {/* Feed Content */}
             <div className="grid lg:grid-cols-12 gap-12 mt-8">
-                {/* Main Feed */}
-                <div className="lg:col-span-8 space-y-6">
-                    {filteredThreads.length === 0 ? (
-                        <div className="text-center py-24 bg-card border border-dashed border-border rounded-3xl">
-                            <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-6 text-muted-foreground">
-                                <Search className="w-8 h-8" />
+                {/* Main Feed - Scrollable Container */}
+                <div className="lg:col-span-8">
+                    <div className="max-h-[800px] overflow-y-auto space-y-6 pr-2 scrollbar-thin scrollbar-thumb-secondary/20 scrollbar-track-transparent">
+                        {filteredThreads.length === 0 ? (
+                            <div className="text-center py-24 bg-card border border-dashed border-border rounded-3xl">
+                                <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-6 text-muted-foreground">
+                                    <Search className="w-8 h-8" />
+                                </div>
+                                <h3 className="text-xl font-bold mb-2">No results found</h3>
+                                <p className="text-muted-foreground">Try adjusting your search or category filters.</p>
                             </div>
-                            <h3 className="text-xl font-bold mb-2">No results found</h3>
-                            <p className="text-muted-foreground">Try adjusting your search or category filters.</p>
+                        ) : (
+                            displayThreads.map((thread) => (
+                                <div key={thread.id} data-discussion-card className="bg-card border border-border rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-all group animate-fade-in text-pretty">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary font-bold">
+                                                {thread.author[0]}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-foreground leading-none">{thread.author}</h4>
+                                                <p className="text-xs text-muted-foreground mt-1">{thread.time} • {thread.category}</p>
+                                            </div>
+                                        </div>
+                                        <button className="text-muted-foreground hover:text-foreground">
+                                            <MoreVertical className="w-5 h-5" />
+                                        </button>
+                                    </div>
+
+                                    <h3 className="font-serif text-2xl font-bold mb-4 group-hover:text-secondary transition-colors">
+                                        {thread.title}
+                                    </h3>
+                                    <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
+                                        {thread.content}
+                                    </p>
+
+                                    <div className="flex items-center justify-between pt-6 border-t border-border/50">
+                                        <div className="flex items-center gap-6">
+                                            <button className="flex items-center gap-2 text-muted-foreground hover:text-rose-500 transition-colors group/stat">
+                                                <Heart className="w-5 h-5 group-hover/stat:fill-rose-500" />
+                                                <span className="font-bold">{thread.likes}</span>
+                                            </button>
+                                            <button className="flex items-center gap-2 text-muted-foreground hover:text-secondary transition-colors group/stat">
+                                                <Hand className="w-5 h-5 group-hover/stat:fill-secondary" />
+                                                <span className="font-bold">{thread.prayers} <span className="hidden sm:inline">prayed</span></span>
+                                            </button>
+                                            <button className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors group/stat">
+                                                <MessageCircle className="w-5 h-5 group-hover/stat:fill-primary" />
+                                                <span className="font-bold">{thread.comments}</span>
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted text-muted-foreground transition-colors">
+                                                <Bookmark className="w-4 h-4" />
+                                            </button>
+                                            <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted text-muted-foreground transition-colors">
+                                                <Share2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+
+                        {/* Sentinel for Infinite Scroll */}
+                        <div ref={loadMoreRef} className="py-8 flex justify-center">
+                            {isLoadingMore && (
+                                <div className="flex flex-col items-center gap-4">
+                                    <div className="w-8 h-8 border-4 border-secondary/20 border-t-secondary rounded-full animate-spin" />
+                                    <p className="text-sm font-bold text-muted-foreground animate-pulse">Loading more fellowship...</p>
+                                </div>
+                            )}
+                            {!isLoadingMore && reachedCap && (
+                                <div className="text-center py-6 px-4 bg-muted/30 rounded-2xl border border-border">
+                                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                                        Showing the latest {MAX_VISIBLE} discussions
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Use filters or search to explore more content
+                                    </p>
+                                </div>
+                            )}
+                            {!isLoadingMore && !hasMore && !reachedCap && filteredThreads.length > 0 && (
+                                <p className="text-muted-foreground text-sm font-medium">You've reached the end of the feed.</p>
+                            )}
                         </div>
-                    ) : (
-                        displayThreads.map((thread) => (
-                            <div key={thread.id} className="bg-card border border-border rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-all group animate-fade-in text-pretty">
-                                <div className="flex justify-between items-start mb-6">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary font-bold">
-                                            {thread.author[0]}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-foreground leading-none">{thread.author}</h4>
-                                            <p className="text-xs text-muted-foreground mt-1">{thread.time} • {thread.category}</p>
-                                        </div>
-                                    </div>
-                                    <button className="text-muted-foreground hover:text-foreground">
-                                        <MoreVertical className="w-5 h-5" />
-                                    </button>
-                                </div>
-
-                                <h3 className="font-serif text-2xl font-bold mb-4 group-hover:text-secondary transition-colors">
-                                    {thread.title}
-                                </h3>
-                                <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
-                                    {thread.content}
-                                </p>
-
-                                <div className="flex items-center justify-between pt-6 border-t border-border/50">
-                                    <div className="flex items-center gap-6">
-                                        <button className="flex items-center gap-2 text-muted-foreground hover:text-rose-500 transition-colors group/stat">
-                                            <Heart className="w-5 h-5 group-hover/stat:fill-rose-500" />
-                                            <span className="font-bold">{thread.likes}</span>
-                                        </button>
-                                        <button className="flex items-center gap-2 text-muted-foreground hover:text-secondary transition-colors group/stat">
-                                            <Hand className="w-5 h-5 group-hover/stat:fill-secondary" />
-                                            <span className="font-bold">{thread.prayers} <span className="hidden sm:inline">prayed</span></span>
-                                        </button>
-                                        <button className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors group/stat">
-                                            <MessageCircle className="w-5 h-5 group-hover/stat:fill-primary" />
-                                            <span className="font-bold">{thread.comments}</span>
-                                        </button>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted text-muted-foreground transition-colors">
-                                            <Bookmark className="w-4 h-4" />
-                                        </button>
-                                        <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted text-muted-foreground transition-colors">
-                                            <Share2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    )}
-
-                    {/* Sentinel for Infinite Scroll */}
-                    <div ref={loadMoreRef} className="py-8 flex justify-center">
-                        {isLoadingMore && (
-                            <div className="flex flex-col items-center gap-4">
-                                <div className="w-8 h-8 border-4 border-secondary/20 border-t-secondary rounded-full animate-spin" />
-                                <p className="text-sm font-bold text-muted-foreground animate-pulse">Loading more fellowship...</p>
-                            </div>
-                        )}
-                        {!isLoadingMore && visibleCount >= filteredThreads.length && filteredThreads.length > 0 && (
-                            <p className="text-muted-foreground text-sm font-medium">You've reached the end of the feed.</p>
-                        )}
                     </div>
                 </div>
 

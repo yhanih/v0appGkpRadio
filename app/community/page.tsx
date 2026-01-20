@@ -43,13 +43,13 @@ export default function CommunityPage() {
             </section>
 
             {/* Community Groups Section */}
-            <section className="py-24 bg-muted/30 border-t border-border/50">
+            <section className="py-24 bg-gradient-to-b from-background to-muted/50 border-t border-border">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-16">
-                        <h2 className="font-serif text-3xl sm:text-4xl font-bold text-foreground mb-4">
+                        <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-6">
                             Find Your Small Group
                         </h2>
-                        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                        <p className="text-lg sm:text-xl text-foreground/70 max-w-2xl mx-auto leading-relaxed">
                             Small groups are the heartbeat of our community. Connect with others
                             who share your season of life or interests for deeper fellowship.
                         </p>
@@ -97,16 +97,16 @@ export default function CommunityPage() {
             {/* Guidelines CTA */}
             <section className="py-20 bg-background border-t border-border">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-8">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 group">
                         <div className="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center">
                             <MessageSquare className="w-6 h-6 text-secondary" />
                         </div>
                         <div>
                             <h4 className="font-bold text-lg">Community Guidelines</h4>
-                            <p className="text-muted-foreground">Ensuring a safe, respectful, and Christ-centered environment for all.</p>
+                            <p className="text-muted-foreground group-hover:text-secondary transition-colors">Ensuring a safe, respectful, and Christ-centered environment for all.</p>
                         </div>
                     </div>
-                    <Button variant="outline" className="border-secondary text-secondary hover:bg-secondary/5 px-8 rounded-xl h-12">
+                    <Button variant="outline" className="border-secondary text-secondary hover:bg-secondary hover:text-white px-8 rounded-xl h-12 transition-all">
                         Read Guidelines
                     </Button>
                 </div>

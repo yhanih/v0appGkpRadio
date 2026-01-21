@@ -1,66 +1,50 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Clock, ChevronRight } from "lucide-react";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
-const programs = [
-  {
-    id: 1,
-    title: "Morning Devotion",
-    time: "6:00 AM - 7:00 AM",
-    host: "Pastor David",
-    description:
-      "Start your day with powerful prayers, scripture readings, and inspirational messages to set a godly tone for the day ahead.",
-    category: "Devotional",
-  },
-  {
-    id: 2,
-    title: "Kingdom Principles",
-    time: "9:00 AM - 10:00 AM",
-    host: "Rev. Sarah Johnson",
-    description:
-      "In-depth Bible teaching exploring the foundational principles of God's Kingdom and how to apply them in daily life.",
-    category: "Teaching",
-  },
-  {
-    id: 3,
-    title: "Worship Hour",
-    time: "12:00 PM - 1:00 PM",
-    host: "Ministry Team",
-    description:
-      "A powerful hour of contemporary and traditional worship music to lift your spirit and draw you closer to God's presence.",
-    category: "Worship",
-  },
-  {
-    id: 4,
-    title: "Family Matters",
-    time: "3:00 PM - 4:00 PM",
-    host: "The Wilsons",
-    description:
-      "Practical biblical guidance for building strong Christian families, addressing parenting, marriage, and relationships.",
-    category: "Family",
-  },
-  {
-    id: 5,
-    title: "Youth On Fire",
-    time: "5:00 PM - 6:00 PM",
-    host: "Pastor Mike",
-    description:
-      "Dynamic programming for young believers featuring relevant discussions, music, and testimonies from youth around the world.",
-    category: "Youth",
-  },
-  {
-    id: 6,
-    title: "Evening Praise",
-    time: "8:00 PM - 10:00 PM",
-    host: "Various Artists",
-    description:
-      "End your day in worship with two hours of uplifting praise music and peaceful hymns for reflection and rest.",
-    category: "Worship",
-  },
-];
+type ScheduleRow = {
+  id: string;
+  show_title: string;
+  hosts: string | null;
+  start_time: string;
+  end_time: string;
+  day_of_week: string;
+};
+
+type Program = {
+  id: string;
+  title: string;
+  time: string;
+  host: string;
+  description: string;
+  category: string;
+};
+
+const formatTimeRange = (start: string, end: string): string => {
+  const to12h = (t: string) => {
+    const [hStr, mStr] = t.split(":");
+    const h = Number(hStr);
+    const m = Number(mStr);
+    const hour12 = ((h + 11) % 12) + 1;
+    const ampm = h >= 12 ? "PM" : "AM";
+    const mm = String(m).padStart(2, "0");
+    return `${hour12}:${mm} ${ampm}`;
+  };
+  return `${to12h(start)} – ${to12h(end)}`;
+};
+
+const mapDayToCategory = (dayOfWeek: string): string => {
+  if (dayOfWeek.includes("Prayer") || dayOfWeek.includes("Pray")) return "Devotional";
+  if (dayOfWeek.includes("Worship") || dayOfWeek.includes("Praise")) return "Worship";
+  if (dayOfWeek.includes("Youth")) return "Youth";
+  if (dayOfWeek.includes("Marriage") || dayOfWeek.includes("Family")) return "Family";
+  if (dayOfWeek === "Daily") return "Worship";
+  return "Teaching";
+};
 
 const categories = [
   "All",
@@ -73,6 +57,84 @@ const categories = [
 
 export function ProgramsSection() {
   const [activeCategory, setActiveCategory] = useState("All");
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let retryCount = 0;
+    const maxRetries = 3;
+    const retryDelay = 500; // 500ms
+
+    const fetchPrograms = async () => {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) {
+        // Retry if Supabase client not available (might be loading env vars)
+        if (retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(() => {
+            if (!cancelled) fetchPrograms();
+          }, retryDelay);
+        } else {
+          if (!cancelled) {
+            setError("Supabase is not configured");
+            setIsLoading(false);
+          }
+        }
+        return;
+      }
+
+      try {
+        const { data, error: queryError } = await supabase
+          .from("schedule")
+          .select("id, show_title, hosts, start_time, end_time, day_of_week")
+          .order("start_time", { ascending: true });
+
+        if (cancelled) return;
+
+        if (queryError) {
+          console.error("[ProgramsSection] Error fetching programs:", queryError);
+          setError(queryError.message);
+          setIsLoading(false);
+          return;
+        }
+
+        if (!data) {
+          console.warn("[ProgramsSection] No schedule data available");
+          setError("No schedule data available");
+          setIsLoading(false);
+          return;
+        }
+
+        const mappedPrograms: Program[] = data.map((row: ScheduleRow) => ({
+          id: row.id,
+          title: row.show_title,
+          time: formatTimeRange(row.start_time, row.end_time),
+          host: row.hosts || "GKP Radio",
+          description: `Tune in for ${row.show_title}${row.hosts ? ` with ${row.hosts}` : ""}.`,
+          category: mapDayToCategory(row.day_of_week),
+        }));
+
+        if (!cancelled) {
+          setPrograms(mappedPrograms);
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error("[ProgramsSection] Unexpected error fetching programs:", err);
+        if (!cancelled) {
+          setError("Failed to load programs");
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchPrograms();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredPrograms =
     activeCategory === "All"
@@ -114,8 +176,21 @@ export function ProgramsSection() {
         </div>
 
         {/* Programs Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredPrograms.map((program) => (
+        {isLoading ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Loading programs...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-destructive">Error loading programs: {error}</p>
+          </div>
+        ) : filteredPrograms.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No programs found for this category.</p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredPrograms.map((program) => (
             <div
               key={program.id}
               className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-xl transition-all duration-300"
@@ -151,8 +226,9 @@ export function ProgramsSection() {
                 </Link>
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* CTA */}
         <div className="text-center mt-12">

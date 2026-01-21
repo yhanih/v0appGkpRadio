@@ -5,68 +5,111 @@ import { Play, Pause, Users, ChevronLeft, ChevronRight, Calendar, MessageSquare,
 import { useState, useEffect } from "react";
 import { useAudioPlayer } from "@/lib/audio-player-context";
 import Link from "next/link";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
-const scheduleData = [
-  {
-    title: "Lunch with Jane Peter",
-    time: "11:00 AM – 12:00 PM",
-    host: "Jane Peter",
-    type: "Talk",
-    days: "Mon–Fri",
-    description: "A lunchtime session to inspire and engage through biblical truths and stories.",
-    listeners: 156,
-    isLive: true,
-  },
-  {
-    title: "Kingdom Teachings",
-    time: "10:00 AM – 11:00 AM",
-    host: "Pastor Myles Monroe",
-    type: "Preach",
-    days: "Mon–Fri",
-    description: "Deep dive into biblical principles for kingdom living and spiritual growth.",
-    listeners: 342,
-    isLive: false,
-  },
-  {
-    title: "Marriage Talk",
-    time: "12:00 PM – 1:00 PM",
-    host: "Dustin Scott",
-    type: "Marriage",
-    days: "Tue & Thu",
-    description: "Building stronger marriages through faith-centered conversations and guidance.",
-    listeners: 128,
-    isLive: false,
-  },
-  {
-    title: "Praise & Worship",
-    time: "10:00 PM – 12:00 AM",
-    host: "Auto-DJ",
-    type: "Music",
-    days: "Daily",
-    description: "Uplifting worship music to end your day in the presence of God.",
-    listeners: 89,
-    isLive: false,
-  },
-];
+type ScheduleRow = {
+  id: string;
+  day_of_week: string;
+  show_title: string;
+  hosts: string | null;
+  start_time: string;
+  end_time: string;
+  is_live: boolean;
+};
+
+const formatTimeRange = (start: string, end: string) => {
+  // start/end are "HH:MM:SS" from Postgres time
+  const to12h = (t: string) => {
+    const [hStr, mStr] = t.split(":");
+    const h = Number(hStr);
+    const m = Number(mStr);
+    const hour12 = ((h + 11) % 12) + 1;
+    const ampm = h >= 12 ? "PM" : "AM";
+    const mm = String(m).padStart(2, "0");
+    return `${hour12}:${mm} ${ampm}`;
+  };
+  return `${to12h(start)} – ${to12h(end)}`;
+};
 
 export function HeroSection() {
   const { isPlaying, togglePlay } = useAudioPlayer();
   const [currentScheduleIndex, setCurrentScheduleIndex] = useState(0);
+  const [scheduleData, setScheduleData] = useState<ScheduleRow[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
+    let retryCount = 0;
+    const maxRetries = 3;
+    const retryDelay = 500; // 500ms
+
+    const fetchSchedule = async () => {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) {
+        // Retry if Supabase client not available (might be loading env vars)
+        if (retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(() => {
+            if (!cancelled) fetchSchedule();
+          }, retryDelay);
+        } else {
+          console.warn("[HeroSection] Supabase client not available after retries");
+          setScheduleData([]);
+        }
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("schedule")
+          .select("id,day_of_week,show_title,hosts,start_time,end_time,is_live")
+          .order("start_time", { ascending: true });
+
+        if (cancelled) return;
+        
+        if (error) {
+          console.error("[HeroSection] Error fetching schedule:", error);
+          setScheduleData([]);
+          return;
+        }
+        
+        if (!data) {
+          console.warn("[HeroSection] No schedule data returned");
+          setScheduleData([]);
+          return;
+        }
+        
+        setScheduleData(data);
+      } catch (err) {
+        console.error("[HeroSection] Unexpected error fetching schedule:", err);
+        if (!cancelled) {
+          setScheduleData([]);
+        }
+      }
+    };
+
+    fetchSchedule();
+
     const interval = setInterval(() => {
-      setCurrentScheduleIndex((prev) => (prev + 1) % scheduleData.length);
+      setCurrentScheduleIndex((prev) =>
+        scheduleData.length ? (prev + 1) % scheduleData.length : 0
+      );
     }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []); // Empty deps - only fetch once on mount
 
   const currentShow = scheduleData[currentScheduleIndex];
 
   const nextSlide = () => {
+    if (!scheduleData.length) return;
     setCurrentScheduleIndex((prev) => (prev + 1) % scheduleData.length);
   };
 
   const prevSlide = () => {
+    if (!scheduleData.length) return;
     setCurrentScheduleIndex((prev) => (prev - 1 + scheduleData.length) % scheduleData.length);
   };
 
@@ -79,35 +122,6 @@ export function HeroSection() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-8">
-          {/* Top Row - Live Indicator & Quick Stats */}
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-            {/* Live Indicator */}
-            <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-red-500/10 border border-red-500/30 backdrop-blur-sm">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)]" />
-              </span>
-              <span className="text-xs font-extrabold text-red-500 tracking-wider uppercase">LIVE NOW</span>
-              <span className="text-sm text-white/90 font-medium">Kingdom Teachings with Pastor Myles Monroe</span>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="flex gap-8 items-center">
-              <div className="flex flex-col items-end">
-                <span className="text-2xl font-extrabold text-[#c39d48]">2,500+</span>
-                <span className="text-xs text-white/60 uppercase tracking-wide">Family Members</span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-2xl font-extrabold text-[#c39d48]">45k+</span>
-                <span className="text-xs text-white/60 uppercase tracking-wide">Prayers Lifted Up</span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-2xl font-extrabold text-[#c39d48]">24/7</span>
-                <span className="text-xs text-white/60 uppercase tracking-wide">Live Ministry</span>
-              </div>
-            </div>
-          </div>
-
           {/* Main Content Grid */}
           <div className="grid lg:grid-cols-[1.2fr_1fr] gap-10 lg:gap-16 items-start">
             {/* Left - Title & CTA */}
@@ -181,72 +195,82 @@ export function HeroSection() {
 
                   {/* Card Content */}
                   <div className="relative z-[1]">
-                    {/* Header Row */}
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#0d4a3e] text-white text-xs font-bold">
-                        <MessageSquare className="w-3 h-3" />
-                        {currentShow.type}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs text-slate-500">
-                        <Clock className="w-3 h-3" />
-                        {currentShow.days}
-                      </span>
-                    </div>
-
-                    {/* Title */}
-                    <h3 className="font-sans text-2xl font-extrabold text-slate-900 leading-tight mb-2">
-                      {currentShow.title}
-                    </h3>
-
-                    {/* Meta */}
-                    <p className="text-sm text-slate-500 mb-4">
-                      {currentShow.time} • {currentShow.host}
-                    </p>
-
-                    {/* Visual Box */}
-                    <div className="relative aspect-video rounded-2xl overflow-hidden mb-4 bg-[#0d4a3e]/10 flex flex-col items-center justify-center">
-                      <div className="text-[#0d4a3e] mb-2">
-                        <MessageSquare className="w-12 h-12" />
+                    {!currentShow ? (
+                      <div className="py-10 text-center">
+                        <p className="text-sm text-slate-500">Schedule unavailable</p>
                       </div>
-                      <div className="font-bold text-lg text-slate-900">{currentShow.time}</div>
-                      <div className="text-xs text-slate-500">{currentShow.days}</div>
-                      {currentShow.isLive && (
-                        <span className="absolute top-3 right-3 px-2 py-1 rounded bg-red-500 text-white text-xs font-bold animate-pulse">
-                          LIVE
-                        </span>
-                      )}
-                    </div>
+                    ) : (
+                      <>
+                        {/* Header Row */}
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#0d4a3e] text-white text-xs font-bold">
+                            <MessageSquare className="w-3 h-3" />
+                            On Air
+                          </span>
+                          <span className="flex items-center gap-1 text-xs text-slate-500">
+                            <Clock className="w-3 h-3" />
+                            {currentShow.day_of_week}
+                          </span>
+                        </div>
 
-                    {/* Description */}
-                    <p className="text-sm text-slate-500 leading-relaxed line-clamp-2 mb-4">
-                      {currentShow.description}
-                    </p>
+                        {/* Title */}
+                        <h3 className="font-sans text-2xl font-extrabold text-slate-900 leading-tight mb-2">
+                          {currentShow.show_title}
+                        </h3>
 
-                    {/* Footer */}
-                    <div className="flex items-center justify-between pt-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-[#0d4a3e]/20" />
-                        <span className="text-sm font-medium text-slate-900">{currentShow.host}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-slate-500 text-sm">
-                        <Users className="w-4 h-4" />
-                        {currentShow.listeners}
-                      </div>
-                    </div>
+                        {/* Meta */}
+                        <p className="text-sm text-slate-500 mb-4">
+                          {formatTimeRange(currentShow.start_time, currentShow.end_time)} •{" "}
+                          {currentShow.hosts ?? "GKP Radio"}
+                        </p>
 
-                    {/* Dots */}
-                    <div className="flex justify-center gap-1 pt-4">
-                      {scheduleData.map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setCurrentScheduleIndex(i)}
-                          className={`h-2 rounded-full transition-all duration-300 ${i === currentScheduleIndex
-                            ? "w-8 bg-[#0d4a3e]"
-                            : "w-2 bg-[#0d4a3e]/30 hover:bg-[#0d4a3e]/50"
-                            }`}
-                        />
-                      ))}
-                    </div>
+                        {/* Visual Box */}
+                        <div className="relative aspect-video rounded-2xl overflow-hidden mb-4 bg-[#0d4a3e]/10 flex flex-col items-center justify-center">
+                          <div className="text-[#0d4a3e] mb-2">
+                            <MessageSquare className="w-12 h-12" />
+                          </div>
+                          <div className="font-bold text-lg text-slate-900">
+                            {formatTimeRange(currentShow.start_time, currentShow.end_time)}
+                          </div>
+                          <div className="text-xs text-slate-500">{currentShow.day_of_week}</div>
+                          {currentShow.is_live && (
+                            <span className="absolute top-3 right-3 px-2 py-1 rounded bg-red-500 text-white text-xs font-bold animate-pulse">
+                              LIVE
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Description */}
+                        <p className="text-sm text-slate-500 leading-relaxed line-clamp-2 mb-4">
+                          Tune in for today&apos;s programming.
+                        </p>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-between pt-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-[#0d4a3e]/20" />
+                            <span className="text-sm font-medium text-slate-900">
+                              {currentShow.hosts ?? "GKP Radio"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 text-slate-500 text-sm" />
+                        </div>
+
+                        {/* Dots */}
+                        <div className="flex justify-center gap-1 pt-4">
+                          {scheduleData.map((_, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setCurrentScheduleIndex(i)}
+                              className={`h-2 rounded-full transition-all duration-300 ${i === currentScheduleIndex
+                                ? "w-8 bg-[#0d4a3e]"
+                                : "w-2 bg-[#0d4a3e]/30 hover:bg-[#0d4a3e]/50"
+                                }`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

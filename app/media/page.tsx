@@ -38,7 +38,7 @@ export default function MediaPage() {
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [showAllCategories, setShowAllCategories] = useState(false);
-    
+
     // Data fetching state
     const [podcasts, setPodcasts] = useState<MediaItem[]>([]);
     const [videos, setVideos] = useState<MediaItem[]>([]);
@@ -49,7 +49,7 @@ export default function MediaPage() {
     // Filter functions
     const filterByCategory = (items: any[]) => {
         if (selectedCategory === 'all') return items;
-        return items.filter(item => 
+        return items.filter(item =>
             item.category?.toLowerCase().includes(selectedCategory.toLowerCase())
         );
     };
@@ -94,7 +94,7 @@ export default function MediaPage() {
         }
 
         const isBookmarked = bookmarkedItems.has(id);
-        
+
         try {
             if (isBookmarked) {
                 // Remove bookmark
@@ -150,7 +150,7 @@ export default function MediaPage() {
             setLoading(true);
             setError(null);
             const supabase = getSupabaseBrowserClient();
-            
+
             if (!supabase) {
                 setError("Failed to connect to database");
                 setLoading(false);
@@ -217,7 +217,7 @@ export default function MediaPage() {
     useEffect(() => {
         const loadBookmarks = async () => {
             if (!user) return;
-            
+
             const supabase = getSupabaseBrowserClient();
             if (!supabase) return;
 
@@ -244,19 +244,19 @@ export default function MediaPage() {
 
     const filteredPodcasts = filterBySearch(filterByCategory(podcasts));
     const filteredVideos = filterBySearch(filterByCategory(videos));
-    const featuredContent = activeTab === 'podcasts' 
+    const featuredContent = activeTab === 'podcasts'
         ? filteredPodcasts.find(p => p.is_featured) || filteredPodcasts[0]
         : filteredVideos.find(v => v.is_featured) || filteredVideos[0];
     const recentContent = activeTab === 'podcasts' ? filteredPodcasts.slice(0, 4) : filteredVideos.slice(0, 4);
     const allContent = activeTab === 'podcasts' ? filteredPodcasts : filteredVideos;
-    
+
     // Calculate visible categories
     const visibleCategories = showAllCategories ? CATEGORIES : CATEGORIES.slice(0, 4);
     const hasMoreCategories = CATEGORIES.length > 4;
 
     return (
         <main className="min-h-screen bg-background pt-20">
-            
+
             {/* Toast Notification */}
             {showToast && (
                 <div className="fixed top-24 right-6 z-50 animate-in slide-in-from-top-5 duration-300">
@@ -284,7 +284,7 @@ export default function MediaPage() {
                             </h1>
                             <p className="text-white/70 text-lg">Discover inspiring content, anytime, anywhere</p>
                         </div>
-                        
+
                         {/* Search Bar */}
                         <div className="relative w-full md:w-96">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
@@ -303,37 +303,33 @@ export default function MediaPage() {
                         <div className="inline-flex bg-black/20 backdrop-blur-xl rounded-2xl p-1.5 border border-white/10">
                             <button
                                 onClick={() => setActiveTab('podcasts')}
-                                className={`relative flex items-center gap-2.5 px-8 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
-                                    activeTab === 'podcasts'
+                                className={`relative flex items-center gap-2.5 px-8 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${activeTab === 'podcasts'
                                         ? 'bg-white text-[#203E3F] shadow-xl'
                                         : 'text-white/60 hover:text-white'
-                                }`}
+                                    }`}
                             >
                                 <Mic className="w-4 h-4" />
                                 <span>Podcasts</span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                                    activeTab === 'podcasts' 
-                                        ? 'bg-[#203E3F]/10 text-[#203E3F]' 
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === 'podcasts'
+                                        ? 'bg-[#203E3F]/10 text-[#203E3F]'
                                         : 'bg-white/10 text-white/60'
-                                }`}>
+                                    }`}>
                                     {podcasts.length}
                                 </span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('videos')}
-                                className={`relative flex items-center gap-2.5 px-8 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
-                                    activeTab === 'videos'
+                                className={`relative flex items-center gap-2.5 px-8 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${activeTab === 'videos'
                                         ? 'bg-white text-[#203E3F] shadow-xl'
                                         : 'text-white/60 hover:text-white'
-                                }`}
+                                    }`}
                             >
                                 <Video className="w-4 h-4" />
                                 <span>Videos</span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                                    activeTab === 'videos' 
-                                        ? 'bg-[#203E3F]/10 text-[#203E3F]' 
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === 'videos'
+                                        ? 'bg-[#203E3F]/10 text-[#203E3F]'
                                         : 'bg-white/10 text-white/60'
-                                }`}>
+                                    }`}>
                                     {videos.length}
                                 </span>
                             </button>
@@ -345,11 +341,10 @@ export default function MediaPage() {
                                 <button
                                     key={category.id}
                                     onClick={() => setSelectedCategory(category.id)}
-                                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#203E3F] ${
-                                        selectedCategory === category.id
+                                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#203E3F] ${selectedCategory === category.id
                                             ? 'bg-white text-[#203E3F] shadow-lg'
                                             : 'bg-white/10 text-white/70 hover:bg-white/20 border border-white/10'
-                                    }`}
+                                        }`}
                                 >
                                     <span className="text-base">{category.icon}</span>
                                     <span>{category.label}</span>
@@ -371,7 +366,7 @@ export default function MediaPage() {
             {/* Main Content - Improved Layout */}
             <section className="py-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    
+
                     {/* Loading State */}
                     {loading && (
                         <div className="flex items-center justify-center py-20">
@@ -400,7 +395,7 @@ export default function MediaPage() {
                         <div className="mb-6 px-4 py-3 bg-secondary/5 border border-secondary/20 rounded-xl">
                             <p className="text-sm text-foreground">
                                 <span className="font-bold">{allContent.length}</span> {allContent.length === 1 ? 'result' : 'results'} for "{searchQuery}"
-                                <button 
+                                <button
                                     onClick={() => setSearchQuery('')}
                                     className="ml-3 text-secondary hover:underline font-semibold focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 rounded"
                                 >
@@ -422,7 +417,17 @@ export default function MediaPage() {
                                 <div className="grid md:grid-cols-2 gap-8 bg-gradient-to-br from-secondary/5 to-accent/5 border border-border rounded-3xl p-8 hover:shadow-2xl transition-all duration-300">
                                     {/* Left: Thumbnail */}
                                     <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted shadow-xl">
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                                        {featuredContent.thumbnail_url ? (
+                                            <Image
+                                                src={featuredContent.thumbnail_url}
+                                                alt={featuredContent.title}
+                                                fill
+                                                className="object-cover transition-transform group-hover:scale-105"
+                                                unoptimized={featuredContent.thumbnail_url.includes('unsplash')}
+                                            />
+                                        ) : (
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                                        )}
                                         <div className="absolute inset-0 flex items-center justify-center">
                                             <div className="w-20 h-20 rounded-full bg-secondary/90 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform shadow-2xl">
                                                 <Play className="w-9 h-9 text-white fill-white ml-1" />
@@ -462,15 +467,15 @@ export default function MediaPage() {
                                             )}
                                         </div>
                                         <div className="flex gap-3">
-                                            <Button 
+                                            <Button
                                                 className="bg-secondary text-white hover:bg-secondary/90 rounded-xl px-6 shadow-lg focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 group"
                                                 title="Play in media player"
                                             >
                                                 <Play className="w-4 h-4 mr-2 fill-white group-hover:scale-110 transition-transform" />
                                                 Play Now
                                             </Button>
-                                            <Button 
-                                                variant="outline" 
+                                            <Button
+                                                variant="outline"
                                                 className="rounded-xl px-6 focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2"
                                                 onClick={() => toggleBookmark(featuredContent.id, featuredContent.title, activeTab === 'podcasts' ? 'episode' : 'video')}
                                             >
@@ -508,13 +513,23 @@ export default function MediaPage() {
                                 {recentContent.map((item) => (
                                     <div key={item.id} className="group cursor-pointer">
                                         <div className="relative aspect-video rounded-2xl overflow-hidden mb-3 bg-gradient-to-br from-muted to-muted/50 shadow-md hover:shadow-xl transition-all">
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-60" />
+                                            {item.thumbnail_url ? (
+                                                <Image
+                                                    src={item.thumbnail_url}
+                                                    alt={item.title}
+                                                    fill
+                                                    className="object-cover transition-transform group-hover:scale-110"
+                                                    unoptimized={item.thumbnail_url.includes('unsplash')}
+                                                />
+                                            ) : (
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-60" />
+                                            )}
                                             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
                                                 <div className="w-14 h-14 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center scale-90 group-hover:scale-100 transition-transform shadow-xl">
                                                     <Play className="w-6 h-6 text-[#203E3F] fill-[#203E3F] ml-0.5" />
                                                 </div>
                                             </div>
-                                            <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 backdrop-blur-md rounded-lg text-xs font-bold text-white">
+                                            <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 backdrop-blur-md rounded-lg text-xs font-bold text-white z-10">
                                                 {formatDuration(item.duration)}
                                             </div>
                                         </div>
@@ -532,152 +547,172 @@ export default function MediaPage() {
 
                     {/* All Content Grid - Modern Cards */}
                     {!loading && !error && (
-                    <div>
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-3">
-                                <h2 className="text-2xl font-bold text-foreground">
-                                    {searchQuery ? 'Search Results' : `All ${activeTab === 'podcasts' ? 'Episodes' : 'Videos'}`}
-                                </h2>
-                                <span className="text-sm text-muted-foreground">• {allContent.length} {allContent.length === 1 ? 'item' : 'items'}</span>
+                        <div>
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-3">
+                                    <h2 className="text-2xl font-bold text-foreground">
+                                        {searchQuery ? 'Search Results' : `All ${activeTab === 'podcasts' ? 'Episodes' : 'Videos'}`}
+                                    </h2>
+                                    <span className="text-sm text-muted-foreground">• {allContent.length} {allContent.length === 1 ? 'item' : 'items'}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2"
+                                        title="Additional filtering options"
+                                    >
+                                        <Filter className="w-4 h-4 mr-2" />
+                                        More Filters
+                                    </Button>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2"
-                                    title="Additional filtering options"
-                                >
-                                    <Filter className="w-4 h-4 mr-2" />
-                                    More Filters
-                                </Button>
-                            </div>
-                        </div>
 
-                        {allContent.length === 0 ? (
-                            <div className="text-center py-20 bg-card/50 rounded-3xl border border-border">
-                                <div className="w-20 h-20 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
-                                    {searchQuery ? (
-                                        <Search className="w-10 h-10 text-muted-foreground" />
-                                    ) : activeTab === 'podcasts' ? (
-                                        <Mic className="w-10 h-10 text-muted-foreground" />
-                                    ) : (
-                                        <Video className="w-10 h-10 text-muted-foreground" />
-                                    )}
+                            {allContent.length === 0 ? (
+                                <div className="text-center py-20 bg-card/50 rounded-3xl border border-border">
+                                    <div className="w-20 h-20 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                                        {searchQuery ? (
+                                            <Search className="w-10 h-10 text-muted-foreground" />
+                                        ) : activeTab === 'podcasts' ? (
+                                            <Mic className="w-10 h-10 text-muted-foreground" />
+                                        ) : (
+                                            <Video className="w-10 h-10 text-muted-foreground" />
+                                        )}
+                                    </div>
+                                    <h4 className="text-xl font-bold text-foreground mb-2">
+                                        {searchQuery
+                                            ? `No results for "${searchQuery}"`
+                                            : `No ${activeTab === 'podcasts' ? 'podcasts' : 'videos'} found`
+                                        }
+                                    </h4>
+                                    <p className="text-muted-foreground mb-6">
+                                        {searchQuery
+                                            ? 'Try a different search term or browse by category'
+                                            : selectedCategory === 'all'
+                                                ? 'Check back soon for new content'
+                                                : `No ${selectedCategory} content available yet`
+                                        }
+                                    </p>
+                                    <div className="flex gap-3 justify-center">
+                                        {searchQuery && (
+                                            <Button
+                                                onClick={() => setSearchQuery('')}
+                                                variant="outline"
+                                                className="rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2"
+                                            >
+                                                Clear Search
+                                            </Button>
+                                        )}
+                                        {selectedCategory !== 'all' && !searchQuery && (
+                                            <Button
+                                                onClick={() => setSelectedCategory('all')}
+                                                variant="outline"
+                                                className="rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2"
+                                            >
+                                                View All Categories
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
-                                <h4 className="text-xl font-bold text-foreground mb-2">
-                                    {searchQuery 
-                                        ? `No results for "${searchQuery}"`
-                                        : `No ${activeTab === 'podcasts' ? 'podcasts' : 'videos'} found`
-                                    }
-                                </h4>
-                                <p className="text-muted-foreground mb-6">
-                                    {searchQuery 
-                                        ? 'Try a different search term or browse by category' 
-                                        : selectedCategory === 'all' 
-                                            ? 'Check back soon for new content' 
-                                            : `No ${selectedCategory} content available yet`
-                                    }
-                                </p>
-                                <div className="flex gap-3 justify-center">
-                                    {searchQuery && (
-                                        <Button 
-                                            onClick={() => setSearchQuery('')} 
-                                            variant="outline" 
-                                            className="rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2"
-                                        >
-                                            Clear Search
-                                        </Button>
-                                    )}
-                                    {selectedCategory !== 'all' && !searchQuery && (
-                                        <Button 
-                                            onClick={() => setSelectedCategory('all')} 
-                                            variant="outline" 
-                                            className="rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2"
-                                        >
-                                            View All Categories
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-                        ) : (
-                            <div className={activeTab === 'videos' ? 'grid sm:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
-                                {activeTab === 'podcasts' ? (
-                                    // Podcast List Cards
-                                    allContent.map((podcast) => (
-                                        <div key={podcast.id} className="group cursor-pointer bg-card hover:bg-card/80 border border-border hover:border-secondary/30 rounded-2xl p-4 transition-all hover:shadow-lg">
-                                            <div className="flex gap-4">
-                                                <div className="relative w-28 h-28 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-muted to-muted/50 shadow-md">
-                                                    <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 flex items-center justify-center transition-all">
-                                                        <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all">
-                                                            <Play className="w-5 h-5 text-[#203E3F] fill-[#203E3F] ml-0.5" />
-                                                        </div>
+                            ) : (
+                                <div className={activeTab === 'videos' ? 'grid sm:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
+                                    {activeTab === 'podcasts' ? (
+                                        // Podcast List Cards
+                                        allContent.map((podcast) => (
+                                            <div key={podcast.id} className="group cursor-pointer bg-card hover:bg-card/80 border border-border hover:border-secondary/30 rounded-2xl p-4 transition-all hover:shadow-lg">
+                                                <div className="flex gap-4">
+                                                    <div className="relative w-28 h-28 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-muted to-muted/50 shadow-md">
+                                                        {podcast.thumbnail_url ? (
+                                                            <Image
+                                                                src={podcast.thumbnail_url}
+                                                                alt={podcast.title}
+                                                                fill
+                                                                className="object-cover transition-transform group-hover:scale-110"
+                                                                unoptimized={podcast.thumbnail_url.includes('unsplash')}
+                                                            />
+                                                        ) : (
+                                                            <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 flex items-center justify-center transition-all">
+                                                                <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all">
+                                                                    <Play className="w-5 h-5 text-[#203E3F] fill-[#203E3F] ml-0.5" />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {podcast.is_featured && (
+                                                            <div className="absolute top-2 right-2 w-6 h-6 bg-secondary rounded-full flex items-center justify-center shadow-lg z-10">
+                                                                <Star className="w-3.5 h-3.5 text-white fill-white" />
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    {podcast.is_featured && (
-                                                        <div className="absolute top-2 right-2 w-6 h-6 bg-secondary rounded-full flex items-center justify-center shadow-lg">
-                                                            <Star className="w-3.5 h-3.5 text-white fill-white" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                    <h4 className="font-bold text-foreground group-hover:text-secondary transition-colors line-clamp-2 mb-1.5 text-base">
-                                                        {podcast.title}
-                                                    </h4>
-                                                    {'author' in podcast && podcast.author && (
-                                                        <p className="text-sm text-muted-foreground mb-2">{podcast.author}</p>
-                                                    )}
-                                                    <div className="flex items-center gap-3 text-xs">
-                                                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-secondary/10 text-secondary rounded-lg font-semibold">
-                                                            <Clock className="w-3 h-3" />
-                                                            {formatDuration(podcast.duration)}
-                                                        </div>
-                                                        <span className="text-muted-foreground">{formatTimeAgo(podcast.created_at)}</span>
-                                                    </div>
-                                                </div>
-                                                <button 
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        toggleBookmark(podcast.id, podcast.title, 'episode');
-                                                    }}
-                                                    className="self-center p-2.5 hover:bg-secondary/10 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2"
-                                                    title={bookmarkedItems.has(podcast.id) ? 'Remove from library' : 'Save to library'}
-                                                >
-                                                    {bookmarkedItems.has(podcast.id) ? (
-                                                        <BookmarkCheck className="w-5 h-5 text-secondary fill-secondary" />
-                                                    ) : (
-                                                        <Bookmark className="w-5 h-5 text-muted-foreground" />
-                                                    )}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    // Video Grid Cards
-                                    allContent.map((video) => (
-                                        <div key={video.id} className="group cursor-pointer">
-                                            <div className="bg-card border border-border hover:border-secondary/30 rounded-2xl overflow-hidden hover:shadow-xl transition-all">
-                                                <div className="relative aspect-video bg-gradient-to-br from-muted to-muted/50">
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
-                                                    <div className="absolute inset-0 flex items-center justify-center">
-                                                        <div className="w-16 h-16 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100 transition-all shadow-xl">
-                                                            <Play className="w-7 h-7 text-[#203E3F] fill-[#203E3F] ml-0.5" />
-                                                        </div>
-                                                    </div>
-                                                    <div className="absolute bottom-3 right-3 px-2.5 py-1 bg-black/80 backdrop-blur-md rounded-lg text-xs font-bold text-white">
-                                                        {formatDuration(video.duration)}
-                                                    </div>
-                                                    {video.is_featured && (
-                                                        <div className="absolute top-3 left-3 px-2.5 py-1.5 bg-secondary rounded-xl flex items-center gap-1.5 shadow-lg">
-                                                            <Star className="w-3 h-3 text-white fill-white" />
-                                                            <span className="text-white text-xs font-bold">Featured</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="p-4">
-                                                    <div className="flex items-start justify-between gap-3 mb-2">
-                                                        <h4 className="font-bold text-foreground group-hover:text-secondary transition-colors line-clamp-2 text-sm leading-snug flex-1">
-                                                            {video.title}
+                                                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                        <h4 className="font-bold text-foreground group-hover:text-secondary transition-colors line-clamp-2 mb-1.5 text-base">
+                                                            {podcast.title}
                                                         </h4>
-                                                            <button 
+                                                        {'author' in podcast && podcast.author && (
+                                                            <p className="text-sm text-muted-foreground mb-2">{podcast.author}</p>
+                                                        )}
+                                                        <div className="flex items-center gap-3 text-xs">
+                                                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-secondary/10 text-secondary rounded-lg font-semibold">
+                                                                <Clock className="w-3 h-3" />
+                                                                {formatDuration(podcast.duration)}
+                                                            </div>
+                                                            <span className="text-muted-foreground">{formatTimeAgo(podcast.created_at)}</span>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            toggleBookmark(podcast.id, podcast.title, 'episode');
+                                                        }}
+                                                        className="self-center p-2.5 hover:bg-secondary/10 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2"
+                                                        title={bookmarkedItems.has(podcast.id) ? 'Remove from library' : 'Save to library'}
+                                                    >
+                                                        {bookmarkedItems.has(podcast.id) ? (
+                                                            <BookmarkCheck className="w-5 h-5 text-secondary fill-secondary" />
+                                                        ) : (
+                                                            <Bookmark className="w-5 h-5 text-muted-foreground" />
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        // Video Grid Cards
+                                        allContent.map((video) => (
+                                            <div key={video.id} className="group cursor-pointer">
+                                                <div className="bg-card border border-border hover:border-secondary/30 rounded-2xl overflow-hidden hover:shadow-xl transition-all">
+                                                    <div className="relative aspect-video bg-gradient-to-br from-muted to-muted/50">
+                                                        {video.thumbnail_url ? (
+                                                            <Image
+                                                                src={video.thumbnail_url}
+                                                                alt={video.title}
+                                                                fill
+                                                                className="object-cover transition-transform group-hover:scale-105"
+                                                                unoptimized={video.thumbnail_url.includes('unsplash')}
+                                                            />
+                                                        ) : (
+                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+                                                        )}
+                                                        <div className="absolute inset-0 flex items-center justify-center z-10">
+                                                            <div className="w-16 h-16 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100 transition-all shadow-xl">
+                                                                <Play className="w-7 h-7 text-[#203E3F] fill-[#203E3F] ml-0.5" />
+                                                            </div>
+                                                        </div>
+                                                        <div className="absolute bottom-3 right-3 px-2.5 py-1 bg-black/80 backdrop-blur-md rounded-lg text-xs font-bold text-white z-10">
+                                                            {formatDuration(video.duration)}
+                                                        </div>
+                                                        {video.is_featured && (
+                                                            <div className="absolute top-3 left-3 px-2.5 py-1.5 bg-secondary rounded-xl flex items-center gap-1.5 shadow-lg z-10">
+                                                                <Star className="w-3 h-3 text-white fill-white" />
+                                                                <span className="text-white text-xs font-bold">Featured</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="p-4">
+                                                        <div className="flex items-start justify-between gap-3 mb-2">
+                                                            <h4 className="font-bold text-foreground group-hover:text-secondary transition-colors line-clamp-2 text-sm leading-snug flex-1">
+                                                                {video.title}
+                                                            </h4>
+                                                            <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     toggleBookmark(video.id, video.title, 'video');
@@ -685,27 +720,27 @@ export default function MediaPage() {
                                                                 className="p-1.5 hover:bg-muted rounded-lg transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2"
                                                                 title={bookmarkedItems.has(video.id) ? 'Remove from library' : 'Save to library'}
                                                             >
-                                                            {bookmarkedItems.has(video.id) ? (
-                                                                <BookmarkCheck className="w-4 h-4 text-secondary fill-secondary" />
-                                                            ) : (
-                                                                <Bookmark className="w-4 h-4 text-muted-foreground" />
+                                                                {bookmarkedItems.has(video.id) ? (
+                                                                    <BookmarkCheck className="w-4 h-4 text-secondary fill-secondary" />
+                                                                ) : (
+                                                                    <Bookmark className="w-4 h-4 text-muted-foreground" />
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-xs">
+                                                            {video.category && (
+                                                                <span className="text-secondary font-semibold">{video.category}</span>
                                                             )}
-                                                        </button>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 text-xs">
-                                                        {video.category && (
-                                                            <span className="text-secondary font-semibold">{video.category}</span>
-                                                        )}
-                                                        <span className="text-muted-foreground">• {formatTimeAgo(video.created_at)}</span>
+                                                            <span className="text-muted-foreground">• {formatTimeAgo(video.created_at)}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        )}
-                    </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
             </section>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { LayoutGrid, Bookmark, Clock, Star, Settings, ExternalLink, ShoppingBag, Heart, Hand, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -168,8 +169,9 @@ export default function HubPage() {
                                     </div>
                                     <h3 className="font-bold text-xl mb-2">Recently Viewed</h3>
                                     {dataLoading ? (
-                                        <div className="flex items-center justify-center py-4">
-                                            <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+                                        <div className="space-y-3 py-2">
+                                            <Skeleton className="h-4 w-3/4" />
+                                            <Skeleton className="h-4 w-1/2" />
                                         </div>
                                     ) : recentBookmarks.length > 0 ? (
                                         <>
@@ -198,8 +200,9 @@ export default function HubPage() {
                                     </div>
                                     <h3 className="font-bold text-xl mb-2">Your Favorites</h3>
                                     {dataLoading ? (
-                                        <div className="flex items-center justify-center py-4">
-                                            <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+                                        <div className="space-y-3 py-2">
+                                            <Skeleton className="h-4 w-full" />
+                                            <Skeleton className="h-4 w-2/3" />
                                         </div>
                                     ) : (
                                         <>
@@ -222,8 +225,13 @@ export default function HubPage() {
                                     </h3>
                                 </div>
                                 {dataLoading ? (
-                                    <div className="flex items-center justify-center py-8">
-                                        <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
+                                    <div className="space-y-4 py-2">
+                                        {[1, 2, 3].map((i) => (
+                                            <div key={i} className="flex items-center gap-4">
+                                                <Skeleton className="w-10 h-10 rounded-lg" />
+                                                <Skeleton className="h-6 flex-1" />
+                                            </div>
+                                        ))}
                                     </div>
                                 ) : recommendations.length > 0 ? (
                                     <div className="space-y-4">

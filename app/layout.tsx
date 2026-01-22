@@ -1,4 +1,4 @@
-import React from "react"
+import React, { Suspense } from "react"
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
@@ -99,17 +99,19 @@ export default function RootLayout({
         className={`${playfair.variable} ${inter.variable} font-sans antialiased`}
       >
         <AppAuthProvider>
-          <AuthModalManager>
-            <CartProvider>
-              <AudioPlayerProvider>
-                <Header />
-                {children}
-                <FloatingAudioPlayer />
-                <Footer />
-                <CartSidebar />
-              </AudioPlayerProvider>
-            </CartProvider>
-          </AuthModalManager>
+          <Suspense fallback={null}>
+            <AuthModalManager>
+              <CartProvider>
+                <AudioPlayerProvider>
+                  <Header />
+                  {children}
+                  <FloatingAudioPlayer />
+                  <Footer />
+                  <CartSidebar />
+                </AudioPlayerProvider>
+              </CartProvider>
+            </AuthModalManager>
+          </Suspense>
         </AppAuthProvider>
         <Toaster position="top-center" richColors />
         {enableAnalytics ? <Analytics /> : null}

@@ -22,7 +22,8 @@ import {
     Plus,
     Share2,
     Bookmark,
-    MoreVertical
+    MoreVertical,
+    AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NewPostModal } from "./new-post-modal";
@@ -30,12 +31,12 @@ import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { LoginModal } from "./auth/LoginModal";
+import { ReportModal } from "./report-modal";
 
 // Keep category IDs in sync with the Supabase seed data so filters don't hide all posts
 export const COMMUNITY_CATEGORIES = [
     { id: "all", label: "All", icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
-    { id: "Prayer Requests", label: "Prayer Requests", icon: Hand, color: "text-secondary", bg: "bg-secondary/10" },
-    { id: "Pray for Others", label: "Pray for Others", icon: Hand, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+    { id: "Prayers", label: "Prayers", icon: Hand, color: "text-secondary", bg: "bg-secondary/10" },
     { id: "Words of Encouragement", label: "Words of Encouragement", icon: Heart, color: "text-rose-500", bg: "bg-rose-500/10" },
     { id: "Praise & Worship", label: "Praise & Worship", icon: Music, color: "text-indigo-500", bg: "bg-indigo-500/10" },
     { id: "Sharing Hobbies", label: "Sharing Hobbies", icon: Palette, color: "text-purple-500", bg: "bg-purple-500/10" },
@@ -218,6 +219,16 @@ export function CommunityFeed() {
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [loginRedirect, setLoginRedirect] = useState("/community");
 
+    // Report modal state
+    const [reportModal, setReportModal] = useState({
+        isOpen: false,
+        contentId: "",
+        contentType: "thread" as "thread" | "comment",
+        contentTitle: ""
+    });
+
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
     // Hybrid auto-load state
     const [visibleCount, setVisibleCount] = useState(10);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -292,7 +303,56 @@ export function CommunityFeed() {
                 throw testQuery.error;
             }
 
-            // Try JOIN approach first (like mobile app), fallback to separate query if RLS recursion
+            if (activeCategory === "Prayers") {
+                console.log("Fetching special Prayer Requests from 'prayers' table...");
+                let prayerQuery = supabase
+                    .from('prayers')
+                    .select('*, users:user_id(id, username, fullname, avatarurl)')
+                    .order('created_at', { ascending: false })
+                    .limit(visibleCount);
+
+                if (debouncedSearchQuery.trim()) {
+                    prayerQuery = prayerQuery.or(`title.ilike.%${debouncedSearchQuery}%,content.ilike.%${debouncedSearchQuery}%`);
+                }
+
+                const { data: prayerData, error: prayerError } = await prayerQuery;
+                if (prayerError) throw prayerError;
+
+                if (prayerData && prayerData.length > 0) {
+                    const prayerIds = prayerData.map(p => p.id);
+                    const { data: actionCounts } = await supabase
+                        .from('prayer_actions')
+                        .select('prayer_id')
+                        .in('prayer_id', prayerIds);
+
+                    const countsMap = new Map<string, number>();
+                    (actionCounts || []).forEach(a => countsMap.set(a.prayer_id, (countsMap.get(a.prayer_id) || 0) + 1));
+
+                    const mappedPrayers = prayerData.map(p => ({
+                        ...p,
+                        id: p.id,
+                        userid: p.user_id,
+                        title: p.title,
+                        content: p.content,
+                        category: "Prayers",
+                        createdat: p.created_at,
+                        prayer_count: countsMap.get(p.id) || 0,
+                    }));
+
+                    if (!isStale()) {
+                        setThreads(mappedPrayers);
+                        setLoading(false);
+                    }
+                    return;
+                } else {
+                    if (!isStale()) {
+                        setThreads([]);
+                        setLoading(false);
+                    }
+                    return;
+                }
+            }
+
             console.log("Starting main query with JOIN...");
             let query = supabase
                 .from('communitythreads')
@@ -624,13 +684,22 @@ export function CommunityFeed() {
         if (!supabase) return;
 
         try {
-            const { data, error } = await supabase
+            const { data: threadPrayers, error: threadError } = await supabase
                 .from('thread_prayers')
                 .select('thread_id')
                 .eq('user_id', user.id);
 
-            if (!error && data) {
-                setPrayedThreads(new Set(data.map(p => p.thread_id)));
+            const { data: prayerActions, error: actionError } = await supabase
+                .from('prayer_actions')
+                .select('prayer_id')
+                .eq('user_id', user.id);
+
+            const prayedSet = new Set<string>();
+            threadPrayers?.forEach(p => prayedSet.add(p.thread_id));
+            prayerActions?.forEach(p => prayedSet.add(p.prayer_id));
+
+            if (!threadError && !actionError) {
+                setPrayedThreads(prayedSet);
             }
         } catch (err) {
             console.error("Error fetching user prayers:", err);
@@ -800,41 +869,73 @@ export function CommunityFeed() {
         setError(null);
 
         try {
-            const { error: insertError } = await supabase
-                .from('thread_prayers')
-                .insert({
-                    thread_id: threadId,
-                    user_id: user.id
-                });
+            if (activeCategory === "Prayers") {
+                const { error: insertError } = await supabase
+                    .from('prayer_actions')
+                    .insert({
+                        prayer_id: threadId,
+                        user_id: user.id
+                    });
 
-            if (insertError) {
-                if (insertError.code === '23505' || insertError.message?.includes('duplicate')) {
-                    // Already prayed; continue to refresh counts.
-                } else if (insertError.message?.includes('rate limit') || insertError.message?.includes('too many')) {
-                    setError("Rate limit exceeded. Please wait a moment before praying again.");
-                    return;
-                } else {
-                    throw insertError;
+                if (insertError) {
+                    if (insertError.code === '23505' || insertError.message?.includes('duplicate')) {
+                        toast.error("You have already prayed for this request");
+                        return;
+                    } else if (insertError.message?.includes('rate limit') || insertError.message?.includes('too many')) {
+                        setError("Rate limit exceeded. Please wait a moment before praying again.");
+                        return;
+                    } else {
+                        throw insertError;
+                    }
                 }
+
+                const { count: prayerCount } = await supabase
+                    .from('prayer_actions')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('prayer_id', threadId);
+
+                setPrayedThreads(prev => new Set([...prev, threadId]));
+                setThreads(prev => prev.map(t =>
+                    t.id === threadId ? { ...t, prayer_count: prayerCount || 0 } : t
+                ));
+            } else {
+                const { error: insertError } = await supabase
+                    .from('thread_prayers')
+                    .insert({
+                        thread_id: threadId,
+                        user_id: user.id
+                    });
+
+                if (insertError) {
+                    if (insertError.code === '23505' || insertError.message?.includes('duplicate')) {
+                        // Already prayed; continue to refresh counts.
+                    } else if (insertError.message?.includes('rate limit') || insertError.message?.includes('too many')) {
+                        setError("Rate limit exceeded. Please wait a moment before praying again.");
+                        return;
+                    } else {
+                        throw insertError;
+                    }
+                }
+
+                const { count: prayerCount } = await supabase
+                    .from('thread_prayers')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('thread_id', threadId);
+
+                setPrayedThreads(prev => new Set([...prev, threadId]));
+                setThreads(prev => prev.map(t =>
+                    t.id === threadId ? { ...t, prayer_count: prayerCount || 0 } : t
+                ));
             }
 
-            const { count: prayerCount } = await supabase
-                .from('thread_prayers')
-                .select('*', { count: 'exact', head: true })
-                .eq('thread_id', threadId);
-
-            const { count: totalPrayersCount } = await supabase
+            const { count: threadPrayersCount } = await supabase
                 .from('thread_prayers')
                 .select('*', { count: 'exact', head: true });
+            const { count: prayerActionsCount } = await supabase
+                .from('prayer_actions')
+                .select('*', { count: 'exact', head: true });
 
-            // Update local state only after server confirmation
-            setPrayedThreads(prev => new Set([...prev, threadId]));
-            setThreads(prev => prev.map(t =>
-                t.id === threadId
-                    ? { ...t, prayer_count: prayerCount || 0 }
-                    : t
-            ));
-            setStats(prev => ({ ...prev, totalPrayers: totalPrayersCount || prev.totalPrayers }));
+            setStats(prev => ({ ...prev, totalPrayers: (threadPrayersCount || 0) + (prayerActionsCount || 0) }));
         } catch (err: any) {
             console.error("Error adding prayer:", err);
             if (err.message?.includes('rate limit') || err.message?.includes('too many')) {
@@ -1494,9 +1595,34 @@ export function CommunityFeed() {
                                                     <p className="text-xs text-muted-foreground mt-1">{formatTimeAgo(thread.createdat)} • {getCategoryLabel(thread.category)}</p>
                                                 </div>
                                             </div>
-                                            <button className="text-muted-foreground hover:text-foreground">
-                                                <MoreVertical className="w-5 h-5" />
-                                            </button>
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => setOpenMenuId(openMenuId === thread.id ? null : thread.id)}
+                                                    className="text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted transition-colors"
+                                                >
+                                                    <MoreVertical className="w-5 h-5" />
+                                                </button>
+
+                                                {openMenuId === thread.id && (
+                                                    <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-xl z-50 py-2 animate-in fade-in zoom-in-95 duration-200">
+                                                        <button
+                                                            onClick={() => {
+                                                                setReportModal({
+                                                                    isOpen: true,
+                                                                    contentId: thread.id,
+                                                                    contentType: "thread",
+                                                                    contentTitle: thread.title
+                                                                });
+                                                                setOpenMenuId(null);
+                                                            }}
+                                                            className="w-full text-left px-4 py-2 text-sm text-destructive hover:bg-destructive/10 flex items-center gap-2 font-medium"
+                                                        >
+                                                            <AlertTriangle className="w-4 h-4" />
+                                                            Report Discussion
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
 
                                         <h3 className="font-serif text-2xl font-bold mb-4 group-hover:text-secondary transition-colors">
@@ -1512,8 +1638,8 @@ export function CommunityFeed() {
                                                     onClick={() => handleLike(thread.id)}
                                                     disabled={likingThreadId === thread.id}
                                                     className={`flex items-center gap-2 transition-colors group/stat ${likedThreads.has(thread.id)
-                                                            ? "text-rose-500 cursor-pointer"
-                                                            : "text-muted-foreground hover:text-rose-500 cursor-pointer"
+                                                        ? "text-rose-500 cursor-pointer"
+                                                        : "text-muted-foreground hover:text-rose-500 cursor-pointer"
                                                         } ${likingThreadId === thread.id ? "opacity-50" : ""}`}
                                                     title={likedThreads.has(thread.id) ? "Unlike" : "Like"}
                                                 >
@@ -1524,8 +1650,8 @@ export function CommunityFeed() {
                                                     onClick={() => handlePray(thread.id)}
                                                     disabled={hasPrayed || prayingThreadId === thread.id}
                                                     className={`flex items-center gap-2 transition-colors group/stat ${hasPrayed
-                                                            ? "text-secondary cursor-default"
-                                                            : "text-muted-foreground hover:text-secondary cursor-pointer"
+                                                        ? "text-secondary cursor-default"
+                                                        : "text-muted-foreground hover:text-secondary cursor-pointer"
                                                         } ${prayingThreadId === thread.id ? "opacity-50" : ""}`}
                                                     title={hasPrayed ? "You've prayed for this" : "Pray for this"}
                                                 >
@@ -1550,8 +1676,8 @@ export function CommunityFeed() {
                                                     onClick={() => handleBookmark(thread.id)}
                                                     disabled={bookmarkingThreadId === thread.id}
                                                     className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors ${bookmarkedThreads.has(thread.id)
-                                                            ? "bg-secondary/20 text-secondary"
-                                                            : "bg-muted/50 hover:bg-muted text-muted-foreground"
+                                                        ? "bg-secondary/20 text-secondary"
+                                                        : "bg-muted/50 hover:bg-muted text-muted-foreground"
                                                         } ${bookmarkingThreadId === thread.id ? "opacity-50" : ""}`}
                                                     title={bookmarkedThreads.has(thread.id) ? "Remove bookmark" : "Save post"}
                                                 >
@@ -1731,6 +1857,14 @@ export function CommunityFeed() {
                     setLoading(true);
                     fetchThreads();
                 }}
+            />
+
+            <ReportModal
+                isOpen={reportModal.isOpen}
+                onClose={() => setReportModal(prev => ({ ...prev, isOpen: false }))}
+                contentId={reportModal.contentId}
+                contentType={reportModal.contentType}
+                contentTitle={reportModal.contentTitle}
             />
         </div>
     );

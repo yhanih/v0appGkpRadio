@@ -6,10 +6,10 @@ import { Radio } from "lucide-react";
 
 const footerLinks = {
   Programs: [
+    { label: "Daily Schedule", href: "/schedule" },
     { label: "Morning Devotion", href: "#" },
     { label: "Kingdom Principles", href: "#" },
     { label: "Worship Hour", href: "#" },
-    { label: "Family Matters", href: "#" },
   ],
   Resources: [
     { label: "Bible Studies", href: "/programs" },
@@ -72,7 +72,7 @@ const socialLinks = [
 export function Footer() {
   // Set year on client only to prevent hydration mismatch
   const [currentYear, setCurrentYear] = useState<number>(2026); // Default fallback
-  
+
   useEffect(() => {
     setCurrentYear(new Date().getFullYear());
   }, []);

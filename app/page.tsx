@@ -2,7 +2,6 @@ import { HeroSection } from "@/components/hero-section";
 import { LiveCommunityBar } from "@/components/live-community-bar";
 import { QuickPrayerSection } from "@/components/quick-prayer-section";
 import { MinistryFieldsSection } from "@/components/ministry-fields-section";
-import { ProgramsSection } from "@/components/programs-section";
 import { AboutSection } from "@/components/about-section";
 import { ContactSection } from "@/components/contact-section";
 
@@ -13,7 +12,6 @@ export default function Home() {
       <LiveCommunityBar />
       <QuickPrayerSection />
       <MinistryFieldsSection />
-      <ProgramsSection />
       <AboutSection />
       <ContactSection />
     </main>

@@ -2,6 +2,17 @@ import { CommunityFeed } from "@/components/community-feed";
 import { Users, Heart, MessageSquare, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Suspense } from "react";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Community Fellowship | Share Stories & Prayers | GKP Radio",
+    description: "Join our active fellowship of believers. Share your testimonies, lift up prayers, and connect with others growing in God's Kingdom Principles.",
+    openGraph: {
+        title: "GKP Radio Community Fellowship",
+        description: "Connect, share, and pray together with our global community.",
+        images: ["/logo.png"],
+    },
+};
 
 function CommunityFeedWrapper() {
     return (

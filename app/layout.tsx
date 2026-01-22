@@ -21,10 +21,45 @@ const playfair = Playfair_Display({
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "God Kingdom Principles Radio | Faith-Based Broadcasting",
+  title: "GKP Radio | Divine Principles, Kingdom Living",
   description:
-    "Experience uplifting Christian radio with inspiring messages, worship music, and teachings that strengthen your faith journey.",
-  generator: "v0.app",
+    "Experience uplifting Christian radio with inspiring messages, worship music, and teachings on God's Kingdom Principles. Join our community and strengthen your faith journey.",
+  metadataBase: new URL('https://gkpradio.com'),
+  keywords: ["Christian Radio", "God's Kingdom Principles", "Faith-Based Broadcasting", "Worship Music", "Gospel Teachings", "Christian Community"],
+  authors: [{ name: "GKP Radio Ministry" }],
+  openGraph: {
+    title: "GKP Radio | Divine Principles, Kingdom Living",
+    description: "Experience uplifting Christian radio with inspiring messages and worship music.",
+    url: "https://gkpradio.com",
+    siteName: "GKP Radio",
+    images: [
+      {
+        url: "/logo.png",
+        width: 1200,
+        height: 630,
+        alt: "GKP Radio Logo",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GKP Radio | Divine Principles, Kingdom Living",
+    description: "Uplifting Christian radio with inspiring messages and worship music.",
+    images: ["/logo.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   icons: {
     icon: [
       {

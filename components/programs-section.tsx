@@ -37,12 +37,13 @@ const formatTimeRange = (start: string, end: string): string => {
   return `${to12h(start)} – ${to12h(end)}`;
 };
 
-const mapDayToCategory = (dayOfWeek: string): string => {
-  if (dayOfWeek.includes("Prayer") || dayOfWeek.includes("Pray")) return "Devotional";
-  if (dayOfWeek.includes("Worship") || dayOfWeek.includes("Praise")) return "Worship";
-  if (dayOfWeek.includes("Youth")) return "Youth";
-  if (dayOfWeek.includes("Marriage") || dayOfWeek.includes("Family")) return "Family";
-  if (dayOfWeek === "Daily") return "Worship";
+const mapDayToCategory = (row: ScheduleRow): string => {
+  const title = row.show_title.toLowerCase();
+  if (title.includes("prayer") || title.includes("devotional") || title.includes("connect 4")) return "Devotional";
+  if (title.includes("worship") || title.includes("praise")) return "Worship";
+  if (title.includes("youth")) return "Youth";
+  if (title.includes("marriage") || title.includes("family") || title.includes("kids")) return "Family";
+  if (title.includes("meditation")) return "Meditation";
   return "Teaching";
 };
 
@@ -53,6 +54,7 @@ const categories = [
   "Worship",
   "Family",
   "Youth",
+  "Meditation",
 ];
 
 export function ProgramsSection() {
@@ -112,8 +114,10 @@ export function ProgramsSection() {
           title: row.show_title,
           time: formatTimeRange(row.start_time, row.end_time),
           host: row.hosts || "GKP Radio",
-          description: `Tune in for ${row.show_title}${row.hosts ? ` with ${row.hosts}` : ""}.`,
-          category: mapDayToCategory(row.day_of_week),
+          description: row.hosts
+            ? `Tune in for ${row.show_title} with ${row.hosts}.`
+            : `Spiritual nourishment and ${row.show_title.toLowerCase()} for your day.`,
+          category: mapDayToCategory(row),
         }));
 
         if (!cancelled) {
@@ -147,12 +151,16 @@ export function ProgramsSection() {
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
           <div>
-            <span className="text-sm font-medium text-secondary uppercase tracking-wider">
-              Our Programs
+            <span className="text-sm font-bold text-secondary uppercase tracking-[0.2em] mb-4 block">
+              GKP Radio • Our Programs
             </span>
-            <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-semibold text-foreground mt-4 text-balance">
+            <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-foreground mt-2 text-balance leading-[1.1]">
               Daily Programming Schedule
             </h2>
+            <p className="text-lg text-muted-foreground mt-4 max-w-2xl">
+              Experience the power of God&apos;s word through our curated daily broadcasts,
+              connecting you to heaven from 6 AM to midnight and beyond.
+            </p>
           </div>
 
           {/* Category Filter */}
@@ -191,41 +199,41 @@ export function ProgramsSection() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredPrograms.map((program) => (
-            <div
-              key={program.id}
-              className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-xl transition-all duration-300"
-            >
-              {/* Time Header */}
-              <div className="bg-primary px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-primary-foreground">
-                  <Clock className="w-4 h-4" />
-                  <span className="text-sm font-medium">{program.time}</span>
+              <div
+                key={program.id}
+                className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-xl transition-all duration-300"
+              >
+                {/* Time Header */}
+                <div className="bg-primary px-6 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-primary-foreground">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-sm font-medium">{program.time}</span>
+                  </div>
+                  <span className="text-xs px-2 py-1 rounded-full bg-accent text-accent-foreground">
+                    {program.category}
+                  </span>
                 </div>
-                <span className="text-xs px-2 py-1 rounded-full bg-accent text-accent-foreground">
-                  {program.category}
-                </span>
-              </div>
 
-              {/* Content */}
-              <div className="p-6">
-                <h3 className="font-serif text-xl font-semibold text-foreground mb-1">
-                  {program.title}
-                </h3>
-                <p className="text-sm text-secondary mb-3">
-                  Hosted by {program.host}
-                </p>
-                <p className="text-muted-foreground text-sm mb-4">
-                  {program.description}
-                </p>
-                <Link
-                  href="/programs"
-                  className="inline-flex items-center text-sm font-medium text-secondary hover:text-secondary/80 transition-colors group-hover:gap-2 gap-1"
-                >
-                  Learn More
-                  <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                </Link>
+                {/* Content */}
+                <div className="p-6">
+                  <h3 className="font-serif text-xl font-semibold text-foreground mb-1">
+                    {program.title}
+                  </h3>
+                  <p className="text-sm text-secondary mb-3">
+                    Hosted by {program.host}
+                  </p>
+                  <p className="text-muted-foreground text-sm mb-4">
+                    {program.description}
+                  </p>
+                  <Link
+                    href="/programs"
+                    className="inline-flex items-center text-sm font-medium text-secondary hover:text-secondary/80 transition-colors group-hover:gap-2 gap-1"
+                  >
+                    Learn More
+                    <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </div>
               </div>
-            </div>
             ))}
           </div>
         )}

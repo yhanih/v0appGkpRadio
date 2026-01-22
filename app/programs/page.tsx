@@ -1,7 +1,17 @@
-import { ProgramsSection } from "@/components/programs-section";
 import { Mic, Headphones, ArrowRight, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Program Schedule | Daily Podcasts & Teachings | GKP Radio",
+    description: "View our daily broadcast schedule. From morning devotionals to evening worship, find the spiritual nourishment you need on GKP Radio.",
+    openGraph: {
+        title: "GKP Radio Program Schedule",
+        description: "Stay connected with our daily faith-based broadcasts and podcasts.",
+        images: ["/logo.png"],
+    },
+};
 
 export default function ProgramsPage() {
     return (
@@ -14,8 +24,8 @@ export default function ProgramsPage() {
                         <Mic className="w-3 h-3" />
                         Discover Truth
                     </div>
-                    <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-bold text-primary-foreground mb-6">
-                        Podcasts & Programs
+                    <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-primary-foreground mb-6 leading-[1.1]">
+                        Our Programs &<br />Daily Schedule
                     </h1>
                     <p className="text-xl text-primary-foreground/70 max-w-3xl mx-auto mb-10 leading-relaxed">
                         Deep dive into the Word of God with our curated selection of teachings,
@@ -33,8 +43,6 @@ export default function ProgramsPage() {
                 </div>
             </section>
 
-            {/* Main Schedule Section */}
-            <ProgramsSection />
 
             {/* Host Spotlight / Featured Series */}
             <section className="py-24 bg-background">
@@ -45,18 +53,19 @@ export default function ProgramsPage() {
                                 Featured Series
                             </span>
                             <h2 className="font-serif text-3xl sm:text-4xl font-bold text-foreground mb-6">
-                                Understanding Kingdom Principles with Rev. Sarah Johnson
+                                Sheffield Family Life Center with Pastor George Weslake
                             </h2>
                             <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-                                Join Rev. Sarah every weekday morning as she breaks down the foundational truths
-                                discussed in the Gospels. This series has touched thousands of lives,
-                                providing practical wisdom for modern living through an ancient lens.
+                                Join Pastor George Weslake every afternoon for powerful teachings on
+                                spiritual growth and biblical foundations. This broadcast from the
+                                Sheffield Family Life Center provides essential keys for living a
+                                Christ-centered life in today&apos;s world.
                             </p>
                             <div className="flex flex-col gap-4">
                                 {[
-                                    "Living by Grace vs. Law",
-                                    "The Power of Persistent Prayer",
-                                    "Faith in the Marketplace"
+                                    "Understanding Biblical Foundations",
+                                    "Growing in Spiritual Maturity",
+                                    "Kingdom Principles for Daily Living"
                                 ].map((topic, i) => (
                                     <div key={i} className="flex items-center gap-3 text-foreground font-medium">
                                         <div className="w-2 h-2 rounded-full bg-secondary" />

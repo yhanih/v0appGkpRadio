@@ -27,6 +27,7 @@ export function NewPostModal({ isOpen, onClose, onSuccess }: NewPostModalProps) 
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
     const [isAnonymous, setIsAnonymous] = useState(false);
+    const [isUrgent, setIsUrgent] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -43,77 +44,83 @@ export function NewPostModal({ isOpen, onClose, onSuccess }: NewPostModalProps) 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         // Validation
         if (!user) {
             setError("Please sign in to create a post");
             return;
         }
-        
+
         if (!title.trim() || !content.trim()) {
             setError("Title and content are required");
             return;
         }
-        
+
         if (title.trim().length > 100) {
             setError("Title must be 100 characters or less");
             return;
         }
-        
+
         if (content.trim().length > 1000) {
             setError("Content must be 1000 characters or less");
             return;
         }
-        
+
         setIsSubmitting(true);
         setError(null);
-        
+
         try {
             if (!supabase) {
                 throw new Error("Database connection unavailable");
             }
-            
+
             console.log("[NewPostModal] Attempting to create post:", {
                 userid: user.id,
                 title: title.trim(),
                 category: selectedCategory,
                 is_anonymous: isAnonymous
             });
-            
-            const { data, error: insertError } = await supabase
-                .from('communitythreads')
-                .insert({
-                    userid: user.id,
-                    title: title.trim(),
-                    content: content.trim(),
-                    category: selectedCategory,
-                    is_anonymous: isAnonymous,
-                    privacy_level: 'public'
-                })
-                .select()
-                .single();
-            
-            console.log("[NewPostModal] Insert result:", { data, error: insertError });
-            
-            if (insertError) {
-                console.error("[NewPostModal] Insert error details:", {
-                    message: insertError.message,
-                    code: insertError.code,
-                    details: insertError.details,
-                    hint: insertError.hint
-                });
-                throw insertError;
+
+            if (selectedCategory === "Prayers") {
+                const { data, error: insertError } = await supabase
+                    .from('prayers')
+                    .insert({
+                        user_id: user.id,
+                        title: title.trim(),
+                        content: content.trim(),
+                        is_urgent: isUrgent,
+                    })
+                    .select()
+                    .single();
+
+                if (insertError) throw insertError;
+            } else {
+                const { data, error: insertError } = await supabase
+                    .from('communitythreads')
+                    .insert({
+                        userid: user.id,
+                        title: title.trim(),
+                        content: content.trim(),
+                        category: selectedCategory,
+                        is_anonymous: isAnonymous,
+                        privacy_level: 'public'
+                    })
+                    .select()
+                    .single();
+
+                if (insertError) throw insertError;
             }
-            
+
             console.log("[NewPostModal] Post created successfully:", data);
-            
+
             // Success - reset form and close modal
             setTitle("");
             setContent("");
             setIsAnonymous(false);
-            setSelectedCategory("Prayer Requests");
+            setIsUrgent(false);
+            setSelectedCategory("Prayers");
             onClose();
-            
+
             // Trigger feed refresh
             if (onSuccess) {
                 onSuccess();
@@ -127,7 +134,7 @@ export function NewPostModal({ isOpen, onClose, onSuccess }: NewPostModalProps) 
                 hint: err?.hint,
                 name: err?.name
             });
-            
+
             // User-friendly error messages
             if (err.code === '23505') {
                 setError("A post with this title already exists. Please choose a different title.");
@@ -193,8 +200,8 @@ export function NewPostModal({ isOpen, onClose, onSuccess }: NewPostModalProps) 
                                     type="button"
                                     onClick={() => setSelectedCategory(cat.id)}
                                     className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2 relative overflow-hidden group ${selectedCategory === cat.id
-                                            ? "border-secondary bg-secondary/5 ring-4 ring-secondary/5"
-                                            : "border-border bg-muted/30 hover:border-muted-foreground/30"
+                                        ? "border-secondary bg-secondary/5 ring-4 ring-secondary/5"
+                                        : "border-border bg-muted/30 hover:border-muted-foreground/30"
                                         }`}
                                 >
                                     <cat.icon className={`w-6 h-6 ${selectedCategory === cat.id ? "text-secondary" : "text-muted-foreground"}`} />
@@ -242,12 +249,12 @@ export function NewPostModal({ isOpen, onClose, onSuccess }: NewPostModalProps) 
                         </div>
                     </section>
 
-                    {/* Anonymity & Info */}
+                    {/* Anonymity & Urgency */}
                     <section className="space-y-4">
                         <div
                             className={`flex items-center justify-between p-6 rounded-3xl border transition-all cursor-pointer ${isAnonymous
-                                    ? "bg-secondary/5 border-secondary/30 ring-4 ring-secondary/5"
-                                    : "bg-muted/30 border-border"
+                                ? "bg-secondary/5 border-secondary/30 ring-4 ring-secondary/5"
+                                : "bg-muted/30 border-border"
                                 }`}
                             onClick={() => setIsAnonymous(!isAnonymous)}
                         >
@@ -265,6 +272,30 @@ export function NewPostModal({ isOpen, onClose, onSuccess }: NewPostModalProps) 
                                 <div className={`w-6 h-6 bg-white rounded-full transition-transform transform ${isAnonymous ? "translate-x-6" : "translate-x-0"}`} />
                             </div>
                         </div>
+
+                        {selectedCategory === "Prayers" && (
+                            <div
+                                className={`flex items-center justify-between p-6 rounded-3xl border transition-all cursor-pointer ${isUrgent
+                                    ? "bg-destructive/5 border-destructive/30 ring-4 ring-destructive/5"
+                                    : "bg-muted/30 border-border"
+                                    }`}
+                                onClick={() => setIsUrgent(!isUrgent)}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${isUrgent ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"
+                                        }`}>
+                                        <Info className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold">Mark as Urgent</h4>
+                                        <p className="text-sm text-muted-foreground">This prayer will be highlighted on the home page.</p>
+                                    </div>
+                                </div>
+                                <div className={`w-14 h-8 rounded-full p-1 transition-colors ${isUrgent ? "bg-destructive" : "bg-muted-foreground/30"}`}>
+                                    <div className={`w-6 h-6 bg-white rounded-full transition-transform transform ${isUrgent ? "translate-x-6" : "translate-x-0"}`} />
+                                </div>
+                            </div>
+                        )}
 
                         <div className="flex gap-4 p-6 bg-primary/5 border border-primary/10 rounded-3xl">
                             <Info className="w-6 h-6 text-primary flex-shrink-0" />

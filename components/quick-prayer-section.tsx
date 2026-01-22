@@ -71,13 +71,13 @@ export function QuickPrayerSection() {
         return;
       }
 
-      // Fetch prayer requests from communitythreads (match community categories)
+      // Fetch urgent prayer requests from the new prayers table
       const { data: prayersData, error: prayersError } = await supabase
-        .from("communitythreads")
-        .select("id, title, content, category, createdat, userid")
-        .in("category", ["Prayer Requests", "Pray for Others"])
-        .order("createdat", { ascending: false })
-        .limit(6);
+        .from("prayers")
+        .select("id, title, content, is_urgent, created_at, user_id")
+        .eq("is_urgent", true)
+        .order("created_at", { ascending: false })
+        .limit(3);
 
       if (cancelled) return;
 
@@ -93,7 +93,7 @@ export function QuickPrayerSection() {
       }
 
       // Fetch user info
-      const userIds = [...new Set(prayersData.map((p) => p.userid))];
+      const userIds = [...new Set(prayersData.map((p) => p.user_id))];
       const { data: usersData } = await supabase
         .from("users")
         .select("id, username, fullname")
@@ -101,28 +101,28 @@ export function QuickPrayerSection() {
 
       const usersMap = new Map((usersData || []).map((u) => [u.id, u]));
 
-      // Fetch prayer counts from thread_prayers table
-      const threadIds = prayersData.map((p) => p.id);
-      const { data: prayersCountData } = await supabase
-        .from("thread_prayers")
-        .select("thread_id")
-        .in("thread_id", threadIds);
+      // Fetch prayer action counts
+      const prayerIds = prayersData.map((p) => p.id);
+      const { data: actionsCountData } = await supabase
+        .from("prayer_actions")
+        .select("prayer_id")
+        .in("prayer_id", prayerIds);
 
       const prayerCountsMap = new Map<string, number>();
-      (prayersCountData || []).forEach((p) => {
+      (actionsCountData || []).forEach((p) => {
         prayerCountsMap.set(
-          p.thread_id,
-          (prayerCountsMap.get(p.thread_id) || 0) + 1
+          p.prayer_id,
+          (prayerCountsMap.get(p.prayer_id) || 0) + 1
         );
       });
 
       // Map to component format
-      const mappedRequests: PrayerRequest[] = prayersData.slice(0, 3).map((prayer) => {
-        const user = usersMap.get(prayer.userid);
+      const mappedRequests: PrayerRequest[] = prayersData.map((prayer) => {
+        const user = usersMap.get(prayer.user_id);
         const name = user?.fullname || user?.username || "Community Member";
-        const location = "Community"; // Location not stored in current schema
+        const location = "International";
         const prayerCount = prayerCountsMap.get(prayer.id) || 0;
-        const goal = Math.max(prayerCount + 10, 50); // Dynamic goal based on current count
+        const goal = Math.max(prayerCount + 10, 50);
 
         return {
           id: prayer.id,
@@ -131,8 +131,8 @@ export function QuickPrayerSection() {
           request: prayer.content || prayer.title,
           prayers: prayerCount,
           goal,
-          category: prayer.category || "Prayer",
-          urgent: false, // Could be determined by date or other logic
+          category: "Urgent Prayer",
+          urgent: prayer.is_urgent,
         };
       });
 
@@ -188,35 +188,32 @@ export function QuickPrayerSection() {
       return;
     }
 
-    // Insert prayer into thread_prayers table
-    // user_id is NOT NULL in schema
+    // Insert prayer action into prayer_actions table
     const { error: insertError } = await supabase
-      .from("thread_prayers")
+      .from("prayer_actions")
       .insert({
-        thread_id: id,
+        prayer_id: id,
         user_id: user.id
       });
 
     if (insertError) {
-      // If error is due to duplicate (user already prayed), that's okay
-      if (!insertError.message.includes("duplicate") && !insertError.message.includes("unique")) {
-        // Check for rate limit error from database
-        if (insertError.message.includes("Rate limit exceeded")) {
-          toast.error("Rate limit exceeded: Maximum 10 prayers per minute allowed");
-        } else {
-          toast.error(`Error: ${insertError.message}`);
-        }
-        setPrayingFor(null);
-        setPrayCount((prev) => Math.max(0, prev - 1)); // Revert count on error
-        return;
+      if (insertError.message.includes("duplicate") || insertError.message.includes("unique")) {
+        toast.error("You have already prayed for this request");
+      } else if (insertError.message.includes("Rate limit exceeded")) {
+        toast.error("Rate limit exceeded: Maximum 10 prayers per minute allowed");
+      } else {
+        toast.error(`Error: ${insertError.message}`);
       }
+      setPrayingFor(null);
+      setPrayCount((prev) => Math.max(0, prev - 1));
+      return;
     }
 
     // Fetch updated prayer count
     const { count } = await supabase
-      .from("thread_prayers")
+      .from("prayer_actions")
       .select("*", { count: "exact", head: true })
-      .eq("thread_id", id);
+      .eq("prayer_id", id);
 
     const newPrayerCount = count || 0;
 
@@ -355,10 +352,10 @@ export function QuickPrayerSection() {
                     onClick={() => handlePray(request.id)}
                     disabled={hasPrayed || isPraying}
                     className={`w-full mt-8 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${hasPrayed
-                        ? "bg-secondary/10 text-secondary cursor-default"
-                        : isPraying
-                          ? "bg-primary/50 text-white cursor-wait"
-                          : "bg-primary text-white hover:bg-primary/90 shadow-md hover:shadow-lg active:scale-95"
+                      ? "bg-secondary/10 text-secondary cursor-default"
+                      : isPraying
+                        ? "bg-primary/50 text-white cursor-wait"
+                        : "bg-primary text-white hover:bg-primary/90 shadow-md hover:shadow-lg active:scale-95"
                       }`}
                   >
                     {isPraying ? (

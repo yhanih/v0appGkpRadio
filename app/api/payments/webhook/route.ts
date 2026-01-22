@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+const stripeKey = process.env.STRIPE_SECRET_KEY || "dummy_key_for_build";
+const stripe = new Stripe(stripeKey, {
   apiVersion: "2024-11-20.acacia",
 });
 
@@ -14,6 +15,12 @@ export async function POST(request: NextRequest) {
 
   if (!signature) {
     return NextResponse.json({ error: "No signature" }, { status: 400 });
+  }
+
+  // Check for Stripe key at runtime
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error("Missing STRIPE_SECRET_KEY environment variable");
+    return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
   }
 
   let event: Stripe.Event;
@@ -32,14 +39,14 @@ export async function POST(request: NextRequest) {
     // Save donation to database
     try {
       const supabase = getSupabaseServerClient();
-      
+
       // Extract donor information from metadata
       const metadata = paymentIntent.metadata || {};
-      const donorName = metadata.donorName || 
-        (metadata.firstName && metadata.lastName 
-          ? `${metadata.firstName} ${metadata.lastName}` 
+      const donorName = metadata.donorName ||
+        (metadata.firstName && metadata.lastName
+          ? `${metadata.firstName} ${metadata.lastName}`
           : null);
-      
+
       // Insert donation record
       const { data, error } = await supabase
         .from("donations")
@@ -76,12 +83,12 @@ export async function POST(request: NextRequest) {
   // Handle payment_intent.payment_failed for tracking failed payments
   if (event.type === "payment_intent.payment_failed") {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
-    
+
     try {
       const supabase = getSupabaseServerClient();
-      
+
       const metadata = paymentIntent.metadata || {};
-      
+
       // Try to find existing donation record by payment_intent_id
       const { data: existing } = await supabase
         .from("donations")

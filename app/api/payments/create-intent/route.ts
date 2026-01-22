@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 
 // Initialize Stripe with secret key from environment
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+// Initialize Stripe
+const stripeKey = process.env.STRIPE_SECRET_KEY || "dummy_key_for_build";
+const stripe = new Stripe(stripeKey, {
   apiVersion: "2024-11-20.acacia",
 });
 
@@ -16,6 +18,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Invalid amount. Minimum donation is $1.00" },
         { status: 400 }
+      );
+    }
+
+    // Check for Stripe key at runtime
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error("Missing STRIPE_SECRET_KEY environment variable");
+      return NextResponse.json(
+        { error: "Payment configuration error. Please contact support." },
+        { status: 500 }
       );
     }
 

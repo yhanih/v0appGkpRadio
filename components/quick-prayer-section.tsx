@@ -5,6 +5,9 @@ import { useState, useEffect } from "react";
 import { Heart, MapPin, Sparkles, MessageSquare, Flame, Hand } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { useAuth } from "@/lib/auth-context";
+import { LoginModal } from "./auth/LoginModal";
+import { toast } from "sonner";
 
 type PrayerRequest = {
   id: string;
@@ -28,6 +31,8 @@ export function QuickPrayerSection() {
   const [prayCount, setPrayCount] = useState(0);
   // Initialize with 0 to avoid hydration mismatch - set actual value in useEffect
   const [rateLimitReset, setRateLimitReset] = useState<number>(0);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const { user } = useAuth();
 
   // UUID validation function
   const isValidUUID = (id: string): boolean => {
@@ -175,20 +180,31 @@ export function QuickPrayerSection() {
     setLastPrayTime(Date.now());
     setPrayCount((prev) => prev + 1);
 
+    // If guest, show login modal
+    if (!user) {
+      setShowLoginModal(true);
+      setPrayingFor(null);
+      setPrayCount((prev) => Math.max(0, prev - 1));
+      return;
+    }
+
     // Insert prayer into thread_prayers table
-    // Note: user_id can be null for anonymous prayers (handled by RLS)
+    // user_id is NOT NULL in schema
     const { error: insertError } = await supabase
       .from("thread_prayers")
-      .insert({ thread_id: id });
+      .insert({
+        thread_id: id,
+        user_id: user.id
+      });
 
     if (insertError) {
       // If error is due to duplicate (user already prayed), that's okay
       if (!insertError.message.includes("duplicate") && !insertError.message.includes("unique")) {
         // Check for rate limit error from database
         if (insertError.message.includes("Rate limit exceeded")) {
-          setError("Rate limit exceeded: Maximum 10 prayers per minute allowed");
+          toast.error("Rate limit exceeded: Maximum 10 prayers per minute allowed");
         } else {
-          setError(insertError.message);
+          toast.error(`Error: ${insertError.message}`);
         }
         setPrayingFor(null);
         setPrayCount((prev) => Math.max(0, prev - 1)); // Revert count on error
@@ -275,96 +291,95 @@ export function QuickPrayerSection() {
               const currentPrayers = request.prayers;
               const currentProgress = progress(currentPrayers, request.goal);
 
-            return (
-              <div
-                key={request.id}
-                className={`group bg-white rounded-2xl p-8 shadow-xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 relative border border-white/10 ${hasPrayed ? 'ring-2 ring-secondary' : ''
-                  }`}
-              >
-                {/* Urgent Badge */}
-                {request.urgent && !hasPrayed && (
-                  <div className="absolute -top-3 left-8 bg-destructive text-destructive-foreground text-[10px] font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-1 uppercase tracking-tighter">
-                    <Flame className="w-3 h-3 fill-current" />
-                    Urgent Need
-                  </div>
-                )}
-
-                {/* Card Header */}
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center text-primary font-bold">
-                      {request.name[0]}
+              return (
+                <div
+                  key={request.id}
+                  className={`group bg-white rounded-2xl p-8 shadow-xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 relative border border-white/10 ${hasPrayed ? 'ring-2 ring-secondary' : ''
+                    }`}
+                >
+                  {/* Urgent Badge */}
+                  {request.urgent && !hasPrayed && (
+                    <div className="absolute -top-3 left-8 bg-destructive text-destructive-foreground text-[10px] font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-1 uppercase tracking-tighter">
+                      <Flame className="w-3 h-3 fill-current" />
+                      Urgent Need
                     </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 leading-tight">{request.name}</h4>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <MapPin className="w-3 h-3" />
-                        {request.location}
+                  )}
+
+                  {/* Card Header */}
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center text-primary font-bold">
+                        {request.name[0]}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-gray-900 leading-tight">{request.name}</h4>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <MapPin className="w-3 h-3" />
+                          {request.location}
+                        </div>
                       </div>
                     </div>
+                    <span className="text-xs font-semibold px-2 py-1 rounded bg-muted text-muted-foreground uppercase">
+                      {request.category}
+                    </span>
                   </div>
-                  <span className="text-xs font-semibold px-2 py-1 rounded bg-muted text-muted-foreground uppercase">
-                    {request.category}
-                  </span>
-                </div>
 
-                {/* Request Content */}
-                <div className="mb-8 min-h-[80px]">
-                  <p className="text-gray-700 leading-relaxed italic">
-                    "{request.request}"
-                  </p>
-                </div>
+                  {/* Request Content */}
+                  <div className="mb-8 min-h-[80px]">
+                    <p className="text-gray-700 leading-relaxed italic">
+                      "{request.request}"
+                    </p>
+                  </div>
 
-                {/* Progress & Stats */}
-                <div className="space-y-4">
-                  <div className="flex items-end justify-between">
-                    <div className="flex items-center gap-2">
-                      <Heart className={`w-5 h-5 transition-colors ${hasPrayed ? 'fill-secondary text-secondary' : 'text-gray-300'}`} />
-                      <span className="text-lg font-bold text-gray-900">{currentPrayers.toLocaleString()}</span>
+                  {/* Progress & Stats */}
+                  <div className="space-y-4">
+                    <div className="flex items-end justify-between">
+                      <div className="flex items-center gap-2">
+                        <Heart className={`w-5 h-5 transition-colors ${hasPrayed ? 'fill-secondary text-secondary' : 'text-gray-300'}`} />
+                        <span className="text-lg font-bold text-gray-900">{currentPrayers.toLocaleString()}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground font-medium">Goal: {request.goal}</span>
                     </div>
-                    <span className="text-xs text-muted-foreground font-medium">Goal: {request.goal}</span>
+
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-1000 ease-out ${hasPrayed ? 'bg-secondary' : 'bg-accent'
+                          }`}
+                        style={{ width: `${Math.min(currentProgress, 100)}%` }}
+                      />
+                    </div>
                   </div>
 
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-1000 ease-out ${hasPrayed ? 'bg-secondary' : 'bg-accent'
-                        }`}
-                      style={{ width: `${Math.min(currentProgress, 100)}%` }}
-                    />
-                  </div>
+                  {/* Action Button */}
+                  <button
+                    onClick={() => handlePray(request.id)}
+                    disabled={hasPrayed || isPraying}
+                    className={`w-full mt-8 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${hasPrayed
+                        ? "bg-secondary/10 text-secondary cursor-default"
+                        : isPraying
+                          ? "bg-primary/50 text-white cursor-wait"
+                          : "bg-primary text-white hover:bg-primary/90 shadow-md hover:shadow-lg active:scale-95"
+                      }`}
+                  >
+                    {isPraying ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Praying...
+                      </>
+                    ) : hasPrayed ? (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        Prayed
+                      </>
+                    ) : (
+                      <>
+                        <Hand className="w-4 h-4" />
+                        Pray for {request.name}
+                      </>
+                    )}
+                  </button>
                 </div>
-
-                {/* Action Button */}
-                <button
-                  onClick={() => handlePray(request.id)}
-                  disabled={hasPrayed || isPraying}
-                  className={`w-full mt-8 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
-                    hasPrayed
-                      ? "bg-secondary/10 text-secondary cursor-default"
-                      : isPraying
-                      ? "bg-primary/50 text-white cursor-wait"
-                      : "bg-primary text-white hover:bg-primary/90 shadow-md hover:shadow-lg active:scale-95"
-                  }`}
-                >
-                  {isPraying ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Praying...
-                    </>
-                  ) : hasPrayed ? (
-                    <>
-                      <Sparkles className="w-4 h-4" />
-                      Prayed
-                    </>
-                  ) : (
-                    <>
-                      <Hand className="w-4 h-4" />
-                      Pray for {request.name}
-                    </>
-                  )}
-                </button>
-              </div>
-            );
+              );
             })}
           </div>
         )}
@@ -386,6 +401,12 @@ export function QuickPrayerSection() {
           </div>
         </div>
       </div>
+
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        redirectTo="/hub"
+      />
     </section>
   );
 }

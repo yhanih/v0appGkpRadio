@@ -29,6 +29,7 @@ import { NewPostModal } from "./new-post-modal";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
+import { LoginModal } from "./auth/LoginModal";
 
 // Keep category IDs in sync with the Supabase seed data so filters don't hide all posts
 export const COMMUNITY_CATEGORIES = [
@@ -156,27 +157,27 @@ interface Comment {
 
 function formatTimeAgo(dateString: string): string {
     if (!dateString) return "recently";
-    
+
     const date = new Date(dateString);
     const now = new Date();
-    
+
     // Check if date is valid
     if (isNaN(date.getTime())) {
         return "recently";
     }
-    
+
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
+
     // Handle future dates
     if (diffInSeconds < 0) {
         return "recently";
     }
-    
+
     if (diffInSeconds < 60) return "just now";
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
     if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-    
+
     // For older dates, show relative time or formatted date
     const diffInDays = Math.floor(diffInSeconds / 86400);
     if (diffInDays < 30) return `${diffInDays}d ago`;
@@ -214,6 +215,8 @@ export function CommunityFeed() {
         activeDiscussions: 0
     });
     const [statsLoading, setStatsLoading] = useState(true);
+    const [showLoginModal, setShowLoginModal] = useState(false);
+    const [loginRedirect, setLoginRedirect] = useState("/community");
 
     // Hybrid auto-load state
     const [visibleCount, setVisibleCount] = useState(10);
@@ -267,28 +270,28 @@ export function CommunityFeed() {
         console.log("Supabase client available, starting query...");
         try {
             setError(null);
-            
+
             // First, test if we can query the table at all
             console.log("Testing basic query...");
             const testQuery = await supabase
                 .from('communitythreads')
                 .select('id')
                 .limit(1);
-            
-            console.log("Test query result:", { 
-                data: testQuery.data, 
+
+            console.log("Test query result:", {
+                data: testQuery.data,
                 error: testQuery.error,
-                count: testQuery.data?.length 
+                count: testQuery.data?.length
             });
             // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/6855a037-0c28-4943-8b57-f28bdcef9a7d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'D',location:'web-app/components/community-feed.tsx:fetchThreads:testQuery',message:'CommunityFeed test query executed',data:{hasData:Array.isArray(testQuery.data)&&testQuery.data.length>0,dataCount:Array.isArray(testQuery.data)?testQuery.data.length:0,hasError:!!testQuery.error,errorCode:(testQuery.error as any)?.code||null,errorMessage:(testQuery.error as any)?.message||null,authUserId:user?.id||null},timestamp:Date.now()})}).catch(()=>{});
+            fetch('http://127.0.0.1:7242/ingest/6855a037-0c28-4943-8b57-f28bdcef9a7d', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'pre-fix', hypothesisId: 'D', location: 'web-app/components/community-feed.tsx:fetchThreads:testQuery', message: 'CommunityFeed test query executed', data: { hasData: Array.isArray(testQuery.data) && testQuery.data.length > 0, dataCount: Array.isArray(testQuery.data) ? testQuery.data.length : 0, hasError: !!testQuery.error, errorCode: (testQuery.error as any)?.code || null, errorMessage: (testQuery.error as any)?.message || null, authUserId: user?.id || null }, timestamp: Date.now() }) }).catch(() => { });
             // #endregion
-            
+
             if (testQuery.error) {
                 console.error("Test query failed:", testQuery.error);
                 throw testQuery.error;
             }
-            
+
             // Try JOIN approach first (like mobile app), fallback to separate query if RLS recursion
             console.log("Starting main query with JOIN...");
             let query = supabase
@@ -325,20 +328,20 @@ export function CommunityFeed() {
                     details: queryError.details,
                     hint: queryError.hint
                 });
-                
+
                 // If JOIN fails with RLS recursion, try separate queries
-                if (queryError.message?.includes('infinite recursion') || 
+                if (queryError.message?.includes('infinite recursion') ||
                     queryError.message?.includes('policy') ||
                     queryError.message?.includes('permission') ||
                     queryError.code === '42501' ||
                     queryError.code === '42P17') { // 42P17 is the error code for infinite recursion
                     console.warn("JOIN query failed due to RLS, trying separate queries:", queryError.message);
-                    
+
                     // Check if component is still mounted
                     if (!isMountedRef.current) {
                         return;
                     }
-                    
+
                     // Fallback to separate query approach
                     let fallbackQuery = supabase
                         .from('communitythreads')
@@ -355,12 +358,12 @@ export function CommunityFeed() {
                     }
 
                     const { data: fallbackData, error: fallbackError } = await fallbackQuery;
-                    
+
                     // Check if component is still mounted
                     if (!isMountedRef.current) {
                         return;
                     }
-                    
+
                     if (fallbackError) {
                         throw fallbackError;
                     }
@@ -375,12 +378,12 @@ export function CommunityFeed() {
                             if (!isMountedRef.current) {
                                 return;
                             }
-                            
+
                             const { data: usersData, error: usersError } = await supabase
                                 .from('users')
                                 .select('id, username, fullname, avatarurl')
                                 .in('id', userIds);
-                            
+
                             // Check if component is still mounted
                             if (!isMountedRef.current) {
                                 return;
@@ -388,10 +391,10 @@ export function CommunityFeed() {
 
                             if (!usersError && usersData) {
                                 usersMap = new Map(
-                                    usersData.map(u => [u.id, { 
-                                        username: u.username, 
-                                        fullname: u.fullname, 
-                                        avatarurl: u.avatarurl 
+                                    usersData.map(u => [u.id, {
+                                        username: u.username,
+                                        fullname: u.fullname,
+                                        avatarurl: u.avatarurl
                                     }])
                                 );
                             }
@@ -403,12 +406,12 @@ export function CommunityFeed() {
                         }));
 
                         const threadIds = fallbackData.map(t => t.id);
-                        
+
                         // Check if component is still mounted
                         if (isStale()) {
                             return;
                         }
-                        
+
                         await fetchThreadCounts(threadIds, threadsWithUsers, currentFetchId);
                     } else {
                         if (!isStale()) {
@@ -426,7 +429,7 @@ export function CommunityFeed() {
                 const threadsWithUsers = data.map((thread: any) => {
                     // Handle different possible structures from JOIN
                     let userData = null;
-                    
+
                     if (!thread.is_anonymous && thread.userid) {
                         // Check if users is an object (from JOIN)
                         if (thread.users && typeof thread.users === 'object' && !Array.isArray(thread.users)) {
@@ -441,7 +444,7 @@ export function CommunityFeed() {
                             userData = thread.users;
                         }
                     }
-                    
+
                     return {
                         ...thread,
                         users: userData
@@ -454,9 +457,9 @@ export function CommunityFeed() {
                     userData: t.users
                 })));
 
-                    // Fetch prayer and comment counts
-                    const threadIds = data.map(t => t.id);
-                    await fetchThreadCounts(threadIds, threadsWithUsers, currentFetchId);
+                // Fetch prayer and comment counts
+                const threadIds = data.map(t => t.id);
+                await fetchThreadCounts(threadIds, threadsWithUsers, currentFetchId);
             } else {
                 if (!isStale()) {
                     setThreads([]);
@@ -467,7 +470,7 @@ export function CommunityFeed() {
             if (isStale()) {
                 return;
             }
-            
+
             // Handle AbortError (cancelled requests) - don't show error to user
             const errorName = err?.name || err?.constructor?.name;
             if (errorName === 'AbortError' || err?.message?.includes('aborted')) {
@@ -478,11 +481,11 @@ export function CommunityFeed() {
                 }
                 return;
             }
-            
+
             // Better error logging (only for meaningful errors)
             const errorMessage = err?.message;
             const errorCode = err?.code;
-            
+
             // Always log errors for debugging
             console.error("Error fetching threads:", {
                 message: errorMessage,
@@ -494,11 +497,11 @@ export function CommunityFeed() {
                 errorType: typeof err,
                 errorKeys: err ? Object.keys(err) : []
             });
-            
+
             if (!isStale()) {
                 // Provide more specific error messages
                 let userErrorMessage = "Failed to load threads. Please refresh the page.";
-                
+
                 if (errorMessage && errorMessage !== '[object Object]' && errorMessage !== '{}') {
                     userErrorMessage = errorMessage;
                 } else if (errorCode === 'PGRST301' || errorCode === '42P01') {
@@ -510,7 +513,7 @@ export function CommunityFeed() {
                 } else if (typeof err === 'string') {
                     userErrorMessage = err;
                 }
-                
+
                 setError(userErrorMessage);
                 setThreads([]);
                 setLoading(false); // Set loading to false so user sees error message
@@ -698,24 +701,24 @@ export function CommunityFeed() {
         if (authLoading) {
             console.log("[CommunityFeed] Waiting for auth to load...");
             // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/6855a037-0c28-4943-8b57-f28bdcef9a7d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C',location:'web-app/components/community-feed.tsx:useEffect:gate',message:'CommunityFeed blocked by authLoading',data:{authLoading:true,userId:user?.id||null,activeCategory,visibleCount,hasSearch:!!debouncedSearchQuery.trim()},timestamp:Date.now()})}).catch(()=>{});
+            fetch('http://127.0.0.1:7242/ingest/6855a037-0c28-4943-8b57-f28bdcef9a7d', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'pre-fix', hypothesisId: 'C', location: 'web-app/components/community-feed.tsx:useEffect:gate', message: 'CommunityFeed blocked by authLoading', data: { authLoading: true, userId: user?.id || null, activeCategory, visibleCount, hasSearch: !!debouncedSearchQuery.trim() }, timestamp: Date.now() }) }).catch(() => { });
             // #endregion
             setLoading(true); // Show loading state while waiting
             return;
         }
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/6855a037-0c28-4943-8b57-f28bdcef9a7d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C',location:'web-app/components/community-feed.tsx:useEffect:fetch',message:'CommunityFeed starting fetch (authLoading=false)',data:{authLoading:false,userId:user?.id||null,activeCategory,visibleCount,hasSearch:!!debouncedSearchQuery.trim()},timestamp:Date.now()})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/6855a037-0c28-4943-8b57-f28bdcef9a7d', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'pre-fix', hypothesisId: 'C', location: 'web-app/components/community-feed.tsx:useEffect:fetch', message: 'CommunityFeed starting fetch (authLoading=false)', data: { authLoading: false, userId: user?.id || null, activeCategory, visibleCount, hasSearch: !!debouncedSearchQuery.trim() }, timestamp: Date.now() }) }).catch(() => { });
         // #endregion
-        
+
         isMountedRef.current = true;
-        
+
         let retryCount = 0;
         const maxRetries = 3;
         const retryDelay = 500;
-        
+
         const fetchData = async () => {
             if (!isMountedRef.current) return;
-            
+
             // Ensure Supabase client is ready
             const supabase = getSupabaseBrowserClient();
             if (!supabase) {
@@ -735,17 +738,17 @@ export function CommunityFeed() {
                     return;
                 }
             }
-            
-            console.log("[CommunityFeed] Fetching threads...", { 
-                activeCategory, 
-                debouncedSearchQuery, 
+
+            console.log("[CommunityFeed] Fetching threads...", {
+                activeCategory,
+                debouncedSearchQuery,
                 visibleCount,
                 userId: user?.id || "anonymous",
                 supabaseReady: true
             });
             setLoading(true);
             setError(null);
-            
+
             try {
                 await fetchThreads();
             } catch (err: any) {
@@ -783,9 +786,14 @@ export function CommunityFeed() {
             return;
         }
 
-        // Check if already prayed
         if (prayedThreads.has(threadId) || prayingThreadId === threadId) {
             return; // Already prayed or currently praying, do nothing
+        }
+
+        if (!user) {
+            setLoginRedirect("/community");
+            setShowLoginModal(true);
+            return;
         }
 
         setPrayingThreadId(threadId);
@@ -796,7 +804,7 @@ export function CommunityFeed() {
                 .from('thread_prayers')
                 .insert({
                     thread_id: threadId,
-                    user_id: user?.id || null
+                    user_id: user.id
                 });
 
             if (insertError) {
@@ -842,7 +850,8 @@ export function CommunityFeed() {
     // Handle like button click
     const handleLike = async (threadId: string) => {
         if (!user) {
-            setError("Please sign in to like posts");
+            setLoginRedirect("/community");
+            setShowLoginModal(true);
             return;
         }
 
@@ -858,7 +867,7 @@ export function CommunityFeed() {
 
         try {
             console.log("[CommunityFeed] Toggling like:", { threadId, isLiked, userId: user.id });
-            
+
             if (isLiked) {
                 const { error } = await supabase
                     .from('community_thread_likes')
@@ -916,7 +925,7 @@ export function CommunityFeed() {
                     ? { ...t, like_count: count || 0 }
                     : t
             ));
-            
+
             // Show success toast
             toast.success(isLiked ? "Like removed" : "Post liked!", {
                 duration: 2000,
@@ -928,7 +937,7 @@ export function CommunityFeed() {
                 code: err?.code,
                 details: err?.details
             });
-            const errorMsg = err?.message?.includes('RLS') || err?.message?.includes('permission') 
+            const errorMsg = err?.message?.includes('RLS') || err?.message?.includes('permission')
                 ? "You don't have permission to like posts. Please contact support."
                 : err?.message || "Failed to update like. Please try again.";
             setError(errorMsg);
@@ -981,7 +990,8 @@ export function CommunityFeed() {
     // Handle bookmark button click
     const handleBookmark = async (threadId: string) => {
         if (!user) {
-            setError("Please sign in to save posts");
+            setLoginRedirect("/community");
+            setShowLoginModal(true);
             return;
         }
 
@@ -997,7 +1007,7 @@ export function CommunityFeed() {
 
         try {
             console.log("[CommunityFeed] Toggling bookmark:", { threadId, isBookmarked, userId: user.id });
-            
+
             if (isBookmarked) {
                 const { error } = await supabase
                     .from('bookmarks')
@@ -1014,10 +1024,10 @@ export function CommunityFeed() {
             } else {
                 const { data, error } = await supabase
                     .from('bookmarks')
-                    .insert({ 
-                        userid: user.id, 
-                        content_id: threadId, 
-                        content_type: 'community_thread' 
+                    .insert({
+                        userid: user.id,
+                        content_id: threadId,
+                        content_type: 'community_thread'
                     })
                     .select();
 
@@ -1176,7 +1186,7 @@ export function CommunityFeed() {
 
         try {
             console.log("[CommunityFeed] Adding comment:", { threadId, userId: user.id, contentLength: draft.length });
-            
+
             const { data, error: insertError } = await supabase
                 .from('communitycomments')
                 .insert({ threadid: threadId, userid: user.id, content: draft })
@@ -1215,7 +1225,7 @@ export function CommunityFeed() {
             setCommentDrafts(prev => ({ ...prev, [threadId]: "" }));
             setCommentErrors(prev => ({ ...prev, [threadId]: null }));
             await fetchCommentsForThread(threadId);
-            
+
             // Show success toast
             toast.success("Comment posted!", {
                 duration: 2000,
@@ -1291,10 +1301,10 @@ export function CommunityFeed() {
 
         const channel = supabase
             .channel('community-likes-updates')
-            .on('postgres_changes', 
-                { 
-                    event: '*', 
-                    schema: 'public', 
+            .on('postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
                     table: 'community_thread_likes'
                 },
                 async (payload) => {
@@ -1308,8 +1318,8 @@ export function CommunityFeed() {
                         .eq('thread_id', threadId);
 
                     if (count !== null) {
-                        setThreads(prev => prev.map(t => 
-                            t.id === threadId 
+                        setThreads(prev => prev.map(t =>
+                            t.id === threadId
                                 ? { ...t, like_count: count }
                                 : t
                         ));
@@ -1365,6 +1375,11 @@ export function CommunityFeed() {
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-20">
+            <LoginModal
+                isOpen={showLoginModal}
+                onClose={() => setShowLoginModal(false)}
+                redirectTo={loginRedirect}
+            />
             {/* Search & Actions Bar */}
             <div className="flex flex-col md:flex-row gap-6 mb-8 items-center justify-between">
                 <div className="relative w-full md:w-96 group">
@@ -1449,8 +1464,8 @@ export function CommunityFeed() {
                             </div>
                         ) : (
                             displayThreads.map((thread) => {
-                                const authorName = thread.is_anonymous 
-                                    ? "Anonymous" 
+                                const authorName = thread.is_anonymous
+                                    ? "Anonymous"
                                     : (thread.users?.fullname || thread.users?.username || "User");
                                 const authorInitial = authorName[0] || "?";
                                 const hasPrayed = prayedThreads.has(thread.id);
@@ -1464,8 +1479,8 @@ export function CommunityFeed() {
                                                         ?
                                                     </div>
                                                 ) : thread.users?.avatarurl ? (
-                                                    <img 
-                                                        src={thread.users.avatarurl} 
+                                                    <img
+                                                        src={thread.users.avatarurl}
                                                         alt={authorName}
                                                         className="w-10 h-10 rounded-full object-cover"
                                                     />
@@ -1493,27 +1508,25 @@ export function CommunityFeed() {
 
                                         <div className="flex items-center justify-between pt-6 border-t border-border/50">
                                             <div className="flex items-center gap-6">
-                                                <button 
+                                                <button
                                                     onClick={() => handleLike(thread.id)}
                                                     disabled={likingThreadId === thread.id}
-                                                    className={`flex items-center gap-2 transition-colors group/stat ${
-                                                        likedThreads.has(thread.id)
+                                                    className={`flex items-center gap-2 transition-colors group/stat ${likedThreads.has(thread.id)
                                                             ? "text-rose-500 cursor-pointer"
                                                             : "text-muted-foreground hover:text-rose-500 cursor-pointer"
-                                                    } ${likingThreadId === thread.id ? "opacity-50" : ""}`}
+                                                        } ${likingThreadId === thread.id ? "opacity-50" : ""}`}
                                                     title={likedThreads.has(thread.id) ? "Unlike" : "Like"}
                                                 >
                                                     <Heart className={`w-5 h-5 ${likedThreads.has(thread.id) ? "fill-rose-500" : ""} group-hover/stat:fill-rose-500`} />
                                                     <span className="font-bold">{thread.like_count || 0}</span>
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => handlePray(thread.id)}
                                                     disabled={hasPrayed || prayingThreadId === thread.id}
-                                                    className={`flex items-center gap-2 transition-colors group/stat ${
-                                                        hasPrayed 
-                                                            ? "text-secondary cursor-default" 
+                                                    className={`flex items-center gap-2 transition-colors group/stat ${hasPrayed
+                                                            ? "text-secondary cursor-default"
                                                             : "text-muted-foreground hover:text-secondary cursor-pointer"
-                                                    } ${prayingThreadId === thread.id ? "opacity-50" : ""}`}
+                                                        } ${prayingThreadId === thread.id ? "opacity-50" : ""}`}
                                                     title={hasPrayed ? "You've prayed for this" : "Pray for this"}
                                                 >
                                                     {prayingThreadId === thread.id ? (
@@ -1523,7 +1536,7 @@ export function CommunityFeed() {
                                                     )}
                                                     <span className="font-bold">{thread.prayer_count || 0} <span className="hidden sm:inline">prayed</span></span>
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => handleCommentToggle(thread.id)}
                                                     className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors group/stat cursor-pointer"
                                                     title={expandedThreadId === thread.id ? "Hide comments" : "View comments"}
@@ -1533,19 +1546,18 @@ export function CommunityFeed() {
                                                 </button>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <button 
+                                                <button
                                                     onClick={() => handleBookmark(thread.id)}
                                                     disabled={bookmarkingThreadId === thread.id}
-                                                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors ${
-                                                        bookmarkedThreads.has(thread.id)
+                                                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors ${bookmarkedThreads.has(thread.id)
                                                             ? "bg-secondary/20 text-secondary"
                                                             : "bg-muted/50 hover:bg-muted text-muted-foreground"
-                                                    } ${bookmarkingThreadId === thread.id ? "opacity-50" : ""}`}
+                                                        } ${bookmarkingThreadId === thread.id ? "opacity-50" : ""}`}
                                                     title={bookmarkedThreads.has(thread.id) ? "Remove bookmark" : "Save post"}
                                                 >
                                                     <Bookmark className={`w-4 h-4 ${bookmarkedThreads.has(thread.id) ? "fill-secondary" : ""}`} />
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => handleShare(thread.id, thread.title)}
                                                     className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted text-muted-foreground transition-colors"
                                                     title="Share post"
@@ -1679,8 +1691,8 @@ export function CommunityFeed() {
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-muted-foreground">Prayers Reached</span>
                                     <span className="font-bold">
-                                        {stats.totalPrayers >= 1000 
-                                            ? `${(stats.totalPrayers / 1000).toFixed(1)}K` 
+                                        {stats.totalPrayers >= 1000
+                                            ? `${(stats.totalPrayers / 1000).toFixed(1)}K`
                                             : stats.totalPrayers.toLocaleString()}
                                     </span>
                                 </div>

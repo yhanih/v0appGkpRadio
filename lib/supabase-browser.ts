@@ -13,18 +13,28 @@ let supabaseClient: SupabaseClient | null = null;
  * with cookie synchronization for middleware and server components.
  */
 export function getSupabaseBrowserClient(): SupabaseClient | null {
-  if (!supabaseUrl || !supabaseAnonKey) return null;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error("[SupabaseBrowser] Missing env variables:", { url: !!supabaseUrl, key: !!supabaseAnonKey });
+    return null;
+  }
 
   // Return existing client if it exists
   if (supabaseClient) {
     return supabaseClient;
   }
 
+  console.log("[SupabaseBrowser] Initializing client with cookie: sb-auth-token");
+
   // Create new client using createBrowserClient from @supabase/ssr
   // This automatically syncs auth state with cookies for the middleware
   supabaseClient = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      detectSessionInUrl: true,
+      flowType: "pkce",
+    },
     cookieOptions: {
-      name: 'sb-auth-token', // Consistent naming
+      name: 'sb-auth-token', // Consistent naming to prevent conflicts
       path: '/',
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',

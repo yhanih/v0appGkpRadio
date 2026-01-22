@@ -11,7 +11,7 @@ export async function updateSession(request: NextRequest) {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookieOptions: {
-                name: 'sb-auth-token',
+                name: 'sb-auth-token', // Matches browser client for perfect sync
                 path: '/',
                 sameSite: 'lax',
                 secure: process.env.NODE_ENV === 'production',
@@ -36,7 +36,6 @@ export async function updateSession(request: NextRequest) {
     // IMPORTANT: Avoid writing any logic between createServerClient and
     // supabase.auth.getUser(). A simple mistake could make it very hard to debug
     // issues with users being randomly logged out.
-
     const {
         data: { user },
     } = await supabase.auth.getUser()

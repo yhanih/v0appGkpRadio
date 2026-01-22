@@ -75,11 +75,9 @@ export function LoginModal({
       // Success! Close modal and redirect
       onClose();
 
-      // Navigate to destination and refresh to sync server-side state
-      // Use clean destination path to avoid parameter loops
+      // Navigate to destination with a hard reload to ensure cookies are flushed
       const targetPath = redirectDestination.split('?')[0];
-      router.push(targetPath);
-      router.refresh();
+      window.location.href = targetPath;
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");
       setIsLoading(false);

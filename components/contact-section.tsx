@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,11 @@ export function ContactSection() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterError, setNewsletterError] = useState<string | null>(null);
@@ -166,7 +171,7 @@ export function ContactSection() {
   };
 
   return (
-    <section id="contact" className="py-24 sm:py-32 bg-background">
+    <section id="contact" className="py-24 sm:py-32 bg-background" suppressHydrationWarning>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-16">
           {/* Left - Contact Info */}
@@ -243,29 +248,31 @@ export function ContactSection() {
                   You&apos;re subscribed. Thank you!
                 </p>
               )}
-              <form
-                onSubmit={handleNewsletterSubmit}
-                className="flex gap-2"
-                suppressHydrationWarning
-              >
-                <Input
-                  type="email"
-                  placeholder="Enter your email"
-                  className="flex-1 bg-card border-border"
-                  required
-                  value={newsletterEmail}
-                  onChange={(e) => setNewsletterEmail(e.target.value)}
-                  disabled={isNewsletterSubmitting}
-                  suppressHydrationWarning
-                />
-                <Button
-                  type="submit"
-                  disabled={isNewsletterSubmitting}
-                  className="bg-secondary text-secondary-foreground hover:bg-secondary/90"
+              {!isMounted ? (
+                <div className="h-12 bg-card/50 rounded-xl animate-pulse" />
+              ) : (
+                <form
+                  onSubmit={handleNewsletterSubmit}
+                  className="flex gap-2"
                 >
-                  {isNewsletterSubmitting ? "..." : "Subscribe"}
-                </Button>
-              </form>
+                  <Input
+                    type="email"
+                    placeholder="Enter your email"
+                    className="flex-1 bg-card border-border"
+                    required
+                    value={newsletterEmail}
+                    onChange={(e) => setNewsletterEmail(e.target.value)}
+                    disabled={isNewsletterSubmitting}
+                  />
+                  <Button
+                    type="submit"
+                    disabled={isNewsletterSubmitting}
+                    className="bg-secondary text-secondary-foreground hover:bg-secondary/90"
+                  >
+                    {isNewsletterSubmitting ? "..." : "Subscribe"}
+                  </Button>
+                </form>
+              )}
             </div>
           </div>
 
@@ -295,11 +302,17 @@ export function ContactSection() {
                   Thank you for reaching out. We&apos;ll get back to you soon.
                 </p>
               </div>
+            ) : !isMounted ? (
+              <div className="space-y-6">
+                <div className="h-10 bg-muted/50 rounded-xl animate-pulse" />
+                <div className="h-10 bg-muted/50 rounded-xl animate-pulse" />
+                <div className="h-32 bg-muted/50 rounded-xl animate-pulse" />
+                <div className="h-12 bg-primary/20 rounded-xl animate-pulse" />
+              </div>
             ) : (
               <form
                 onSubmit={handleSubmit}
                 className="space-y-6"
-                suppressHydrationWarning
               >
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
@@ -317,7 +330,6 @@ export function ContactSection() {
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       disabled={isSubmitting}
-                      suppressHydrationWarning
                     />
                   </div>
                   <div>
@@ -335,7 +347,6 @@ export function ContactSection() {
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       disabled={isSubmitting}
-                      suppressHydrationWarning
                     />
                   </div>
                 </div>
@@ -355,7 +366,6 @@ export function ContactSection() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={isSubmitting}
-                    suppressHydrationWarning
                   />
                 </div>
                 <div>
@@ -373,7 +383,6 @@ export function ContactSection() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     disabled={isSubmitting}
-                    suppressHydrationWarning
                   />
                 </div>
                 <div>
@@ -391,7 +400,6 @@ export function ContactSection() {
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                     disabled={isSubmitting}
-                    suppressHydrationWarning
                   />
                 </div>
                 <div>
@@ -410,7 +418,6 @@ export function ContactSection() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     disabled={isSubmitting}
-                    suppressHydrationWarning
                   />
                 </div>
                 <Button

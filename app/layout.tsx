@@ -59,7 +59,7 @@ export default function RootLayout({
     process.env.NODE_ENV === "production";
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${playfair.variable} ${inter.variable} font-sans antialiased`}
       >

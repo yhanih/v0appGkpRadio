@@ -18,19 +18,20 @@ const nextConfig = {
     },
   },
   async headers() {
+    const isProd = process.env.NODE_ENV === 'production';
+
     return [
       {
-        // Apply security headers to all routes
         source: '/:path*',
         headers: [
           {
             key: 'X-DNS-Prefetch-Control',
             value: 'on'
           },
-          {
+          ...(isProd ? [{
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload'
-          },
+          }] : []),
           {
             key: 'X-Frame-Options',
             value: 'SAMEORIGIN'
@@ -65,8 +66,8 @@ const nextConfig = {
               "base-uri 'self'",
               "form-action 'self'",
               "frame-ancestors 'self'",
-              "upgrade-insecure-requests"
-            ].join('; ')
+              isProd ? "upgrade-insecure-requests" : ""
+            ].filter(Boolean).join('; ')
           }
         ],
       },

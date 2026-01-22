@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Extract error properties safely - handle cases where error object doesn't serialize well
         let errorMessage = "Unknown error";
         let errorCode = "unknown";
-        
+
         // Try multiple ways to extract error message
         try {
           if (typeof result.error === 'string') {
@@ -94,34 +94,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch {
           errorMessage = String(result.error);
         }
-        
+
         // Try to extract error code
         try {
-          errorCode = result.error.code || 
-                     (result.error as any)?.status?.toString() || 
-                     (result.error as any)?.error_code ||
-                     "unknown";
+          errorCode = result.error.code ||
+            (result.error as any)?.status?.toString() ||
+            (result.error as any)?.error_code ||
+            "unknown";
         } catch {
           errorCode = "unknown";
         }
-        
+
         // Handle AbortError (cancelled requests) - these are not critical
         const errorName = (result.error as any)?.name || result.error?.constructor?.name;
         if (errorName === 'AbortError' || errorMessage?.includes('aborted') || errorMessage?.includes('AbortError')) {
           // Silently ignore abort errors - they're usually from component unmounting or rapid requests
           return;
         }
-        
+
         // Handle RLS policy errors gracefully
-        const isRLSError = errorCode === '42501' || 
-                          errorCode === '42P17' ||
-                          errorMessage.toLowerCase().includes('permission denied') || 
-                          errorMessage.toLowerCase().includes('policy') ||
-                          errorMessage.toLowerCase().includes('row-level security') ||
-                          errorMessage.toLowerCase().includes('rls') ||
-                          errorMessage.toLowerCase().includes('infinite recursion') ||
-                          errorMessage.toLowerCase().includes('new row violates');
-        
+        const isRLSError = errorCode === '42501' ||
+          errorCode === '42P17' ||
+          errorMessage.toLowerCase().includes('permission denied') ||
+          errorMessage.toLowerCase().includes('policy') ||
+          errorMessage.toLowerCase().includes('row-level security') ||
+          errorMessage.toLowerCase().includes('rls') ||
+          errorMessage.toLowerCase().includes('infinite recursion') ||
+          errorMessage.toLowerCase().includes('new row violates');
+
         if (isRLSError) {
           console.warn("User profile upsert blocked by RLS policy. This is expected if INSERT policy is not yet applied:", {
             message: errorMessage,
@@ -131,7 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Don't throw - this is a configuration issue, not a critical error
           return;
         }
-        
+
         // Only log meaningful errors (skip empty objects and abort errors)
         if (errorMessage && errorMessage !== '[object Object]' && errorMessage !== '{}' && errorMessage !== 'Unknown error') {
           const errorInfo: Record<string, any> = {
@@ -141,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             errorType: typeof result.error,
             errorConstructor: result.error?.constructor?.name || 'Unknown'
           };
-          
+
           // Try to extract additional properties if they exist
           const errorObj = result.error as any;
           const commonProps = ['details', 'hint', 'status', 'statusText', 'error_description', 'error_code'];
@@ -154,7 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // Skip if can't access
             }
           });
-          
+
           console.error("Error upserting user profile:", errorInfo);
         }
       }
@@ -162,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Handle unexpected errors
       const errorMessage = error?.message || String(error);
       const errorStack = error?.stack;
-      
+
       // Don't log empty error objects
       if (errorMessage && errorMessage !== '[object Object]') {
         console.error("Error ensuring user profile:", {
@@ -197,7 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         console.log("[AuthContext] Restoring session from storage...");
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (!isMounted) return;
 
         if (error) {
@@ -213,11 +213,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         if (session?.user) {
           await ensureUserProfile(session.user);
         }
-        
+
         sessionRestored = true;
         setLoading(false);
       } catch (error) {
@@ -246,7 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (sessionRestored || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         if (session?.user && event === "SIGNED_IN") {
           await ensureUserProfile(session.user);
         }

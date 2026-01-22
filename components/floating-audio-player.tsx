@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Play, Pause, X, ChevronUp, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import { useAudioPlayer } from "@/lib/audio-player-context";
@@ -8,6 +8,13 @@ import { useAudioPlayer } from "@/lib/audio-player-context";
 export function FloatingAudioPlayer() {
   const { isPlaying, setIsPlaying, isExpanded, setIsExpanded, isVisible, setIsVisible, isMinimized, setIsMinimized } = useAudioPlayer();
   const [progress, setProgress] = useState(35);
+  // Generate random bar heights on client only to prevent hydration mismatch
+  const [barHeights, setBarHeights] = useState<number[]>([]);
+  
+  useEffect(() => {
+    // Generate random heights only on client
+    setBarHeights([1, 2, 3, 4].map(() => Math.random() * 12 + 6));
+  }, []);
 
   if (!isVisible) return null;
 
@@ -47,14 +54,14 @@ export function FloatingAudioPlayer() {
                 <div className="w-2 h-2 rounded-full bg-white" />
               </div>
             </div>
-            {isPlaying && (
+            {isPlaying && barHeights.length > 0 && (
               <div className="absolute inset-0 flex items-end justify-center pb-1 gap-0.5">
-                {[1, 2, 3, 4].map((i) => (
+                {barHeights.map((height, i) => (
                   <div
                     key={i}
                     className="w-1 bg-white/80 rounded-full animate-pulse"
                     style={{
-                      height: `${Math.random() * 12 + 6}px`,
+                      height: `${height}px`,
                       animationDelay: `${i * 0.1}s`,
                       animationDuration: "0.5s",
                     }}

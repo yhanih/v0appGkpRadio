@@ -1,68 +1,173 @@
+"use client";
+
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { MessageCircle, Users, Heart, Clock, Sparkles, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
-const discussions = [
-  {
-    id: 1,
-    category: "Prayer Requests",
-    categoryColor: "#7F5A53", // Terracotta/Coral
-    title: "Prayer Request: Healing for My Mother",
-    excerpt: "Join us in Prayer: My mother undergoes surgery this week. Your prayers strengthen our family.",
-    author: "Sarah@NashvilleUSA",
-    time: "2 hours ago",
-    replies: 18,
-  },
-  {
-    id: 2,
-    category: "Testimonies",
-    categoryColor: "#AC9258", // Gold
-    title: "Testimony: God's Provision in Hard Times",
-    excerpt: "We Never Went Hungry: How God provided when I lost my job. His faithfulness never fails.",
-    author: "Michael@AtlantaUSA",
-    time: "4 hours ago",
-    replies: 32,
-  },
-  {
-    id: 3,
-    category: "Youth Voices",
-    categoryColor: "#2DA072", // Emerald
-    title: "Youth Discussion: Faith in College",
-    excerpt: "How do you maintain your faith while navigating college life and peer pressure?",
-    author: "Emma@DallasUSA",
-    time: "6 hours ago",
-    replies: 25,
-  },
-];
+type Discussion = {
+  id: string;
+  category: string;
+  categoryColor: string;
+  title: string;
+  excerpt: string;
+  author: string;
+  time: string;
+  replies: number;
+};
 
-const stats = [
-  {
-    icon: Users,
-    value: "2.5K+",
-    label: "Community Members",
-    color: "#2DA072",
-  },
-  {
-    icon: MessageCircle,
-    value: "8.2K",
-    label: "Discussions",
-    color: "#AC9258",
-  },
-  {
-    icon: Heart,
-    value: "45K",
-    label: "Prayer Requests",
-    color: "#7F5A53",
-  },
-  {
-    icon: Clock,
-    value: "24/7",
-    label: "Community Support",
-    color: "#203E3F",
-  },
-];
+type Stats = {
+  icon: typeof Users;
+  value: string;
+  label: string;
+  color: string;
+};
+
+const categoryColors: Record<string, string> = {
+  "Prayer Requests": "#7F5A53",
+  "Prayers": "#7F5A53",
+  "Testimonies": "#AC9258",
+  "Youth Voices": "#2DA072",
+  "Praise & Worship": "#AC9258",
+  "To My Husband": "#7F5A53",
+  "To My Wife": "#7F5A53",
+  "Sharing Hobbies": "#2DA072",
+  "Words of Encouragement": "#AC9258",
+  "Bragging on My Child (ren)": "#2DA072",
+  "Pray for Others": "#7F5A53",
+};
+
+const formatTimeAgo = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+  const diffInDays = Math.floor(diffInHours / 24);
+
+  if (diffInHours < 1) return "Just now";
+  if (diffInHours < 24) return `${diffInHours} ${diffInHours === 1 ? "hour" : "hours"} ago`;
+  if (diffInDays < 7) return `${diffInDays} ${diffInDays === 1 ? "day" : "days"} ago`;
+  return `${Math.floor(diffInDays / 7)} ${Math.floor(diffInDays / 7) === 1 ? "week" : "weeks"} ago`;
+};
+
+const formatNumber = (num: number): string => {
+  if (num >= 1000) {
+    const k = Math.floor(num / 1000);
+    const remainder = num % 1000;
+    if (remainder >= 100) {
+      return `${k}.${Math.floor(remainder / 100)}K+`;
+    }
+    return `${k}K+`;
+  }
+  return num.toString();
+};
 
 export function MinistryFieldsSection() {
+  const [discussions, setDiscussions] = useState<Discussion[]>([]);
+  const [stats, setStats] = useState<Stats[]>([
+    { icon: Users, value: "0", label: "Community Members", color: "#2DA072" },
+    { icon: MessageCircle, value: "0", label: "Discussions", color: "#AC9258" },
+    { icon: Heart, value: "0", label: "Prayer Requests", color: "#7F5A53" },
+    { icon: Clock, value: "24/7", label: "Community Support", color: "#203E3F" },
+  ]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) {
+        if (!cancelled) {
+          setError("Supabase is not configured");
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      // Fetch stats
+      try {
+        const [usersResult, threadsResult, prayersResult] = await Promise.all([
+          supabase.from("users").select("id", { count: "exact", head: true }),
+          supabase.from("communitythreads").select("id", { count: "exact", head: true }),
+          supabase.from("communitythreads").select("id", { count: "exact", head: true }).eq("category", "Prayer"),
+        ]);
+
+        if (cancelled) return;
+
+        const memberCount = usersResult.count || 0;
+        const discussionCount = threadsResult.count || 0;
+        const prayerCount = prayersResult.count || 0;
+
+        setStats([
+          { icon: Users, value: formatNumber(memberCount), label: "Community Members", color: "#2DA072" },
+          { icon: MessageCircle, value: formatNumber(discussionCount), label: "Discussions", color: "#AC9258" },
+          { icon: Heart, value: formatNumber(prayerCount), label: "Prayer Requests", color: "#7F5A53" },
+          { icon: Clock, value: "24/7", label: "Community Support", color: "#203E3F" },
+        ]);
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Error fetching stats:", err);
+        }
+      }
+
+      // Fetch featured discussions
+      const { data: threadsData, error: threadsError } = await supabase
+        .from("communitythreads")
+        .select("id, title, content, category, createdat, comment_count, userid")
+        .order("createdat", { ascending: false })
+        .limit(3);
+
+      if (cancelled) return;
+
+      if (threadsError) {
+        setError(threadsError.message);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!threadsData || threadsData.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch user info for authors
+      const userIds = [...new Set(threadsData.map((t) => t.userid))];
+      const { data: usersData } = await supabase
+        .from("users")
+        .select("id, username, fullname")
+        .in("id", userIds);
+
+      const usersMap = new Map((usersData || []).map((u) => [u.id, u]));
+
+      const mappedDiscussions: Discussion[] = threadsData.map((thread) => {
+        const user = usersMap.get(thread.userid);
+        const authorName = user?.fullname || user?.username || "Community Member";
+        const excerpt = thread.content.length > 120 ? thread.content.substring(0, 120) + "..." : thread.content;
+
+        return {
+          id: thread.id,
+          category: thread.category,
+          categoryColor: categoryColors[thread.category] || "#7F5A53",
+          title: thread.title,
+          excerpt,
+          author: authorName,
+          time: formatTimeAgo(thread.createdat),
+          replies: thread.comment_count || 0,
+        };
+      });
+
+      if (!cancelled) {
+        setDiscussions(mappedDiscussions);
+        setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   return (
     <section className="py-24 bg-background border-t border-border/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -98,8 +203,21 @@ export function MinistryFieldsSection() {
         </div>
 
         {/* Discussion Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
-          {discussions.map((discussion) => (
+        {isLoading ? (
+          <div className="text-center py-12 mb-20">
+            <p className="text-muted-foreground">Loading discussions...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12 mb-20">
+            <p className="text-destructive">Error loading discussions: {error}</p>
+          </div>
+        ) : discussions.length === 0 ? (
+          <div className="text-center py-12 mb-20">
+            <p className="text-muted-foreground">No discussions available yet.</p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
+            {discussions.map((discussion) => (
             <Link
               key={discussion.id}
               href={`/community?category=${discussion.category === 'Prayer Requests' ? 'Prayers' : discussion.category}`}
@@ -155,8 +273,9 @@ export function MinistryFieldsSection() {
                 </div>
               </div>
             </Link>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">

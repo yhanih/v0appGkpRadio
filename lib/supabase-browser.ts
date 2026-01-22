@@ -1,37 +1,33 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createBrowserClient } from '@supabase/ssr'
+import { SupabaseClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Singleton instance to prevent multiple GoTrueClient instances
+// Singleton instance to prevent multiple instances
 let supabaseClient: SupabaseClient | null = null;
 
 /**
- * Get or create a singleton Supabase client instance.
- * This prevents multiple GoTrueClient instances which cause AbortErrors.
- * 
- * NOTE:
- * We intentionally do NOT throw at module-evaluation time because Next may import this file
- * during build/prerender even though it is used from client components.
+ * Get or create a singleton Supabase client instance using @supabase/ssr.
+ * This is the recommended way for Next.js Apps to handle browser-side auth
+ * with cookie synchronization for middleware and server components.
  */
 export function getSupabaseBrowserClient(): SupabaseClient | null {
   if (!supabaseUrl || !supabaseAnonKey) return null;
-  
+
   // Return existing client if it exists
   if (supabaseClient) {
     return supabaseClient;
   }
-  
-  // Create new client only once with explicit storage configuration
-  // Explicitly use localStorage to ensure consistent session persistence
-  supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      flowType: "pkce", // Use PKCE flow for better security
-      // Explicitly use localStorage for session persistence
-      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+
+  // Create new client using createBrowserClient from @supabase/ssr
+  // This automatically syncs auth state with cookies for the middleware
+  supabaseClient = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: {
+      name: 'sb-auth-token', // Consistent naming
+      path: '/',
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
     },
     global: {
       headers: {
@@ -40,31 +36,5 @@ export function getSupabaseBrowserClient(): SupabaseClient | null {
     },
   });
 
-  // Validate and clean up session on client creation (only in browser)
-  if (typeof window !== 'undefined') {
-    // Check if there's a stored session and validate it
-    supabaseClient.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.warn("[SupabaseClient] Error getting initial session:", error);
-        // Clear potentially corrupted session
-        supabaseClient.auth.signOut({ scope: 'local' }).catch(() => {
-          // Ignore errors during cleanup
-        });
-      } else if (session) {
-        // Validate session hasn't expired
-        const expiresAt = session.expires_at;
-        if (expiresAt && expiresAt * 1000 < Date.now()) {
-          console.warn("[SupabaseClient] Session expired, clearing...");
-          supabaseClient.auth.signOut({ scope: 'local' }).catch(() => {
-            // Ignore errors during cleanup
-          });
-        }
-      }
-    }).catch((err) => {
-      console.warn("[SupabaseClient] Error validating session:", err);
-    });
-  }
-  
   return supabaseClient;
 }
-

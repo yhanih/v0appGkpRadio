@@ -1,6 +1,15 @@
 import { CommunityFeed } from "@/components/community-feed";
 import { Users, Heart, MessageSquare, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Suspense } from "react";
+
+function CommunityFeedWrapper() {
+    return (
+        <Suspense fallback={<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">Loading...</div>}>
+            <CommunityFeed />
+        </Suspense>
+    );
+}
 
 export default function CommunityPage() {
     return (
@@ -39,7 +48,7 @@ export default function CommunityPage() {
 
             {/* Functional Community Feed */}
             <section id="feed" className="bg-background min-h-screen">
-                <CommunityFeed />
+                <CommunityFeedWrapper />
             </section>
 
             {/* Community Groups Section */}

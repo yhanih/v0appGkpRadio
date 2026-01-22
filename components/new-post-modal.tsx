@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     X,
     Send,
@@ -10,33 +10,139 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { COMMUNITY_CATEGORIES } from "./community-feed";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { useAuth } from "@/lib/auth-context";
 
 interface NewPostModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onSuccess?: () => void;
 }
 
-export function NewPostModal({ isOpen, onClose }: NewPostModalProps) {
-    const [selectedCategory, setSelectedCategory] = useState("Prayers");
+export function NewPostModal({ isOpen, onClose, onSuccess }: NewPostModalProps) {
+    const { user } = useAuth();
+    const supabase = getSupabaseBrowserClient();
+    // Default to the primary category used in the seeded data
+    const [selectedCategory, setSelectedCategory] = useState("Prayer Requests");
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
     const [isAnonymous, setIsAnonymous] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Check authentication when modal opens
+    useEffect(() => {
+        if (isOpen && !user) {
+            setError("Please sign in to create a post");
+        } else if (isOpen) {
+            setError(null);
+        }
+    }, [isOpen, user]);
 
     if (!isOpen) return null;
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Validation
+        if (!user) {
+            setError("Please sign in to create a post");
+            return;
+        }
+        
+        if (!title.trim() || !content.trim()) {
+            setError("Title and content are required");
+            return;
+        }
+        
+        if (title.trim().length > 100) {
+            setError("Title must be 100 characters or less");
+            return;
+        }
+        
+        if (content.trim().length > 1000) {
+            setError("Content must be 1000 characters or less");
+            return;
+        }
+        
         setIsSubmitting(true);
-        // Simulate API call
-        setTimeout(() => {
-            setIsSubmitting(false);
-            onClose();
-            // Reset form
+        setError(null);
+        
+        try {
+            if (!supabase) {
+                throw new Error("Database connection unavailable");
+            }
+            
+            console.log("[NewPostModal] Attempting to create post:", {
+                userid: user.id,
+                title: title.trim(),
+                category: selectedCategory,
+                is_anonymous: isAnonymous
+            });
+            
+            const { data, error: insertError } = await supabase
+                .from('communitythreads')
+                .insert({
+                    userid: user.id,
+                    title: title.trim(),
+                    content: content.trim(),
+                    category: selectedCategory,
+                    is_anonymous: isAnonymous,
+                    privacy_level: 'public'
+                })
+                .select()
+                .single();
+            
+            console.log("[NewPostModal] Insert result:", { data, error: insertError });
+            
+            if (insertError) {
+                console.error("[NewPostModal] Insert error details:", {
+                    message: insertError.message,
+                    code: insertError.code,
+                    details: insertError.details,
+                    hint: insertError.hint
+                });
+                throw insertError;
+            }
+            
+            console.log("[NewPostModal] Post created successfully:", data);
+            
+            // Success - reset form and close modal
             setTitle("");
             setContent("");
             setIsAnonymous(false);
-        }, 1500);
+            setSelectedCategory("Prayer Requests");
+            onClose();
+            
+            // Trigger feed refresh
+            if (onSuccess) {
+                onSuccess();
+            }
+        } catch (err: any) {
+            console.error("[NewPostModal] Error creating post:", {
+                error: err,
+                message: err?.message,
+                code: err?.code,
+                details: err?.details,
+                hint: err?.hint,
+                name: err?.name
+            });
+            
+            // User-friendly error messages
+            if (err.code === '23505') {
+                setError("A post with this title already exists. Please choose a different title.");
+            } else if (err.code === '42501' || err.message?.includes('RLS') || err.message?.includes('permission') || err.message?.includes('row-level security')) {
+                setError("You don't have permission to create posts. This might be a security policy issue. Please contact support.");
+            } else if (err.message?.includes('rate limit')) {
+                setError("Too many posts created. Please wait a moment before posting again.");
+            } else {
+                const errorMsg = err.message || err.details || "Failed to create post. Please try again.";
+                setError(errorMsg);
+                console.error("[NewPostModal] Full error object:", err);
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -70,6 +176,13 @@ export function NewPostModal({ isOpen, onClose }: NewPostModalProps) {
 
                 {/* Content - Scrollable */}
                 <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-hide">
+                    {/* Error Message */}
+                    {error && (
+                        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-2xl text-destructive">
+                            <p className="font-bold text-sm">{error}</p>
+                        </div>
+                    )}
+
                     {/* Category Selection */}
                     <section>
                         <label className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4 block">Select Category</label>
@@ -176,6 +289,7 @@ export function NewPostModal({ isOpen, onClose }: NewPostModalProps) {
                         Cancel
                     </Button>
                     <Button
+                        type="submit"
                         onClick={handleSubmit}
                         disabled={isSubmitting || !title || !content}
                         className="flex-1 bg-secondary text-white hover:bg-secondary/90 h-12 rounded-xl gap-2 font-bold shadow-lg disabled:opacity-50"

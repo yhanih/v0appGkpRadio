@@ -6,6 +6,12 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { FloatingAudioPlayer } from "@/components/floating-audio-player";
 import { AudioPlayerProvider } from "@/lib/audio-player-context";
+import { AppAuthProvider } from "@/components/auth-provider";
+import { AuthModalManager } from "@/components/auth/AuthModalManager";
+import { CartProvider } from "@/lib/cart-context";
+import { CartSidebar } from "@/components/cart-sidebar";
+import { Toaster } from "sonner";
+import "@/lib/error-handler"; // Suppress AbortErrors
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -47,18 +53,31 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Only enable Vercel Analytics when explicitly opted-in to avoid CSP errors in dev
+  const enableAnalytics =
+    process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === "true" &&
+    process.env.NODE_ENV === "production";
+
   return (
     <html lang="en">
       <body
         className={`${playfair.variable} ${inter.variable} font-sans antialiased`}
       >
-        <AudioPlayerProvider>
-          <Header />
-          {children}
-          <FloatingAudioPlayer />
-          <Footer />
-        </AudioPlayerProvider>
-        <Analytics />
+        <AppAuthProvider>
+          <AuthModalManager>
+            <CartProvider>
+              <AudioPlayerProvider>
+                <Header />
+                {children}
+                <FloatingAudioPlayer />
+                <Footer />
+                <CartSidebar />
+              </AudioPlayerProvider>
+            </CartProvider>
+          </AuthModalManager>
+        </AppAuthProvider>
+        <Toaster position="top-center" richColors />
+        {enableAnalytics ? <Analytics /> : null}
       </body>
     </html>
   );

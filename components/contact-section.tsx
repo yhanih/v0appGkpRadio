@@ -1,19 +1,167 @@
 "use client";
 
-import React from "react"
+import React from "react";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Mail, Phone, MapPin, Send, CheckCircle } from "lucide-react";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export function ContactSection() {
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterError, setNewsletterError] = useState<string | null>(null);
+  const [newsletterSuccess, setNewsletterSuccess] = useState(false);
+  const [isNewsletterSubmitting, setIsNewsletterSubmitting] = useState(false);
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [phone, setPhone] = useState("");
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    return emailRegex.test(email);
+  };
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setNewsletterError(null);
+    setNewsletterSuccess(false);
+    setIsNewsletterSubmitting(true);
+
+    // Email validation
+    if (!newsletterEmail.trim()) {
+      setNewsletterError("Email is required");
+      setIsNewsletterSubmitting(false);
+      return;
+    }
+
+    if (!validateEmail(newsletterEmail.trim())) {
+      setNewsletterError("Please enter a valid email address");
+      setIsNewsletterSubmitting(false);
+      return;
+    }
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setNewsletterError(
+        "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
+      );
+      setIsNewsletterSubmitting(false);
+      return;
+    }
+
+    // Minimal insert: only email. (Avoid assuming extra columns.)
+    const { error: insertError } = await supabase
+      .from("newslettersubscribers")
+      .insert({ email: newsletterEmail.trim() });
+
+    if (insertError) {
+      setNewsletterError(insertError.message);
+      setIsNewsletterSubmitting(false);
+      return;
+    }
+
+    setIsNewsletterSubmitting(false);
+    setNewsletterSuccess(true);
+    setNewsletterEmail("");
+    setTimeout(() => setNewsletterSuccess(false), 3000);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    // Input validation
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("First name and last name are required");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!email.trim()) {
+      setError("Email is required");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!validateEmail(email.trim())) {
+      setError("Please enter a valid email address");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!subject.trim()) {
+      setError("Subject is required");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (subject.length > 200) {
+      setError("Subject must be 200 characters or less");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!message.trim()) {
+      setError("Message is required");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (message.length > 5000) {
+      setError("Message must be 5000 characters or less");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setError(
+        "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
+    const name = `${firstName.trim()} ${lastName.trim()}`.trim();
+
+    const { error: insertError } = await supabase.from("contactmessages").insert({
+      name,
+      email: email.trim(),
+      phone: phone?.trim() || null,
+      subject: subject.trim(),
+      message: message.trim(),
+      contactreason: "contact",
+      status: "unread",
+    });
+
+    if (insertError) {
+      setError(insertError.message);
+      setIsSubmitting(false);
+      return;
+    }
+
     setSubmitted(true);
+    setIsSubmitting(false);
+
+    // Reset form
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setPhone("");
+    setSubject("");
+    setMessage("");
+
     setTimeout(() => setSubmitted(false), 3000);
   };
 
@@ -85,14 +233,37 @@ export function ContactSection() {
                 Stay updated with program schedules, events, and inspiring
                 content.
               </p>
-              <form className="flex gap-2">
+              {newsletterError && (
+                <p className="text-sm text-destructive font-medium mb-3">
+                  Couldn&apos;t subscribe: {newsletterError}
+                </p>
+              )}
+              {newsletterSuccess && (
+                <p className="text-sm text-secondary font-medium mb-3">
+                  You&apos;re subscribed. Thank you!
+                </p>
+              )}
+              <form
+                onSubmit={handleNewsletterSubmit}
+                className="flex gap-2"
+                suppressHydrationWarning
+              >
                 <Input
                   type="email"
                   placeholder="Enter your email"
                   className="flex-1 bg-card border-border"
+                  required
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  disabled={isNewsletterSubmitting}
+                  suppressHydrationWarning
                 />
-                <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                  Subscribe
+                <Button
+                  type="submit"
+                  disabled={isNewsletterSubmitting}
+                  className="bg-secondary text-secondary-foreground hover:bg-secondary/90"
+                >
+                  {isNewsletterSubmitting ? "..." : "Subscribe"}
                 </Button>
               </form>
             </div>
@@ -103,6 +274,14 @@ export function ContactSection() {
             <h3 className="font-serif text-2xl font-semibold text-foreground mb-6">
               Send Us a Message
             </h3>
+
+            {error && (
+              <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3">
+                <p className="text-sm text-destructive font-medium">
+                  We couldn&apos;t send your message: {error}
+                </p>
+              </div>
+            )}
 
             {submitted ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -117,7 +296,11 @@ export function ContactSection() {
                 </p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form
+                onSubmit={handleSubmit}
+                className="space-y-6"
+                suppressHydrationWarning
+              >
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
                     <label
@@ -131,6 +314,10 @@ export function ContactSection() {
                       placeholder="John"
                       className="bg-background border-border"
                       required
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      disabled={isSubmitting}
+                      suppressHydrationWarning
                     />
                   </div>
                   <div>
@@ -145,6 +332,10 @@ export function ContactSection() {
                       placeholder="Doe"
                       className="bg-background border-border"
                       required
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      disabled={isSubmitting}
+                      suppressHydrationWarning
                     />
                   </div>
                 </div>
@@ -161,6 +352,28 @@ export function ContactSection() {
                     placeholder="john@example.com"
                     className="bg-background border-border"
                     required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isSubmitting}
+                    suppressHydrationWarning
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="phone"
+                    className="block text-sm font-medium text-foreground mb-2"
+                  >
+                    Phone (optional)
+                  </label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="+1 (555) 123-4567"
+                    className="bg-background border-border"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    disabled={isSubmitting}
+                    suppressHydrationWarning
                   />
                 </div>
                 <div>
@@ -175,6 +388,10 @@ export function ContactSection() {
                     placeholder="How can we help?"
                     className="bg-background border-border"
                     required
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    disabled={isSubmitting}
+                    suppressHydrationWarning
                   />
                 </div>
                 <div>
@@ -190,14 +407,19 @@ export function ContactSection() {
                     rows={5}
                     className="bg-background border-border resize-none"
                     required
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    disabled={isSubmitting}
+                    suppressHydrationWarning
                   />
                 </div>
                 <Button
                   type="submit"
+                  disabled={isSubmitting}
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
                 >
                   <Send className="w-4 h-4" />
-                  Send Message
+                  {isSubmitting ? "Sending..." : "Send Message"}
                 </Button>
               </form>
             )}

@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Radio } from "lucide-react";
 
@@ -9,21 +12,21 @@ const footerLinks = {
     { label: "Family Matters", href: "#" },
   ],
   Resources: [
-    { label: "Bible Studies", href: "#" },
-    { label: "Sermon Archive", href: "#" },
-    { label: "Prayer Requests", href: "#" },
-    { label: "Donate", href: "#" },
+    { label: "Bible Studies", href: "/programs" },
+    { label: "Sermon Archive", href: "/media" },
+    { label: "Prayer Requests", href: "/community?category=Prayers" },
+    { label: "Donate", href: "/donate" },
   ],
   Connect: [
-    { label: "About Us", href: "#about" },
-    { label: "Contact", href: "#contact" },
-    { label: "Volunteer", href: "#" },
-    { label: "Partner With Us", href: "#" },
+    { label: "About Us", href: "/about" },
+    { label: "Contact", href: "/contact" },
+    { label: "Volunteer", href: "/contact" },
+    { label: "Partner With Us", href: "/contact" },
   ],
   Legal: [
-    { label: "Privacy Policy", href: "#" },
-    { label: "Terms of Service", href: "#" },
-    { label: "Cookie Policy", href: "#" },
+    { label: "Privacy Policy", href: "/privacy" },
+    { label: "Terms of Service", href: "/terms" },
+    { label: "Cookie Policy", href: "/privacy#cookies" },
   ],
 };
 
@@ -67,6 +70,13 @@ const socialLinks = [
 ];
 
 export function Footer() {
+  // Set year on client only to prevent hydration mismatch
+  const [currentYear, setCurrentYear] = useState<number>(2026); // Default fallback
+  
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
+  }, []);
+
   return (
     <footer className="bg-primary text-primary-foreground">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -130,7 +140,7 @@ export function Footer() {
         <div className="border-t border-primary-foreground/10 pt-8">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <p className="text-sm text-primary-foreground/60">
-              © {new Date().getFullYear()} God Kingdom Principles Radio. All
+              © {currentYear} God Kingdom Principles Radio. All
               rights reserved.
             </p>
             <p className="text-sm text-primary-foreground/60">
